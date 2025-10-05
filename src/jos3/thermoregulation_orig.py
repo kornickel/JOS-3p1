@@ -231,89 +231,14 @@ def heat_resistances(
         clo=np.zeros(17),
         posture="standing",
         iclo=np.ones(17)*0.45,
-        emissivity=np.ones(17),
-        airperm=np.ones(17),
-        evap_eff=None,
         options={},):
 
-    # Calculate base convective and radiative heat transfer coefficients
     hc = fixed_hc(conv_coef(posture, va, ta, tsk,))
     hr = fixed_hr(rad_coef(posture,))
-    # ---------------------------------------------
-    # Modify heat transfer coefficients according to clothing properties
-    # Air permeability controls how easily air can penetrate clothing. A value
-    # of 1.0 represents fully permeable clothing (no wind protection), while
-    # lower values reduce the convective heat transfer coefficient.  If a
-    # scalar is supplied, broadcast it to all 17 body segments; otherwise
-    # ensure we have an array of length 17.
-    if np.isscalar(airperm):
-        perm = np.ones(17) * airperm
-    else:
-        perm = np.array(airperm)
-    hc = hc * perm
-    # Emissivity modifies the radiative heat transfer coefficient.  Values
-    # below 1.0 reduce radiation exchange.  Broadcast scalars to all
-    # segments, otherwise cast to a numpy array.
-    if np.isscalar(emissivity):
-        eps = np.ones(17) * emissivity
-    else:
-        eps = np.array(emissivity)
-    hr = hr * eps
-
-    # Operative temperature: weighted average of air and radiant temperatures
     to = operative_temp(ta, tr, hc, hr,)
-    # Clothing area factor
     fcl = clo_area_factor(clo,)
-
-    # --- Dry (sensible) thermal resistance ---
-    # Following the formulation in `dry_r`, the corrected convective
-    # coefficient (hcc) is adjusted for atmospheric pressure.  Use the
-    # default pressure of 101.33 kPa here for simplicity.
-    pt = 101.33
-    hcc = hc * ((pt / 101.33) ** 0.55)
-    # Boundary layer resistance
-    r_a = 1 / (hcc + hr)
-    # Clothing insulation resistance; 0.155 converts clo [clo] to
-    # m²·K/W
-    r_cl = 0.155 * clo
-    # Total dry resistance: boundary layer resistance divided by fcl plus
-    # clothing resistance
-    r_t = r_a / fcl + r_cl
-
-    # --- Wet (evaporative) thermal resistance ---
-    # The Lewis relation converts convective to evaporative heat
-    # transfer coefficient
-    lewis_rate = 16.5
-    # Evaporative heat transfer coefficient
-    he = hc * lewis_rate
-    # Correct he for local atmospheric pressure.  Use default 101.33 kPa
-    hec = he * ((101.33 / pt) ** 0.45)
-    # Evaporative boundary layer resistance
-    r_ea = 1 / hec
-    # Determine the base vapor permeation efficiency array.  Use the
-    # alias ``evap_eff`` if provided; otherwise fall back to ``iclo``.
-    if evap_eff is not None:
-        # Use evap_eff instead of iclo
-        if np.isscalar(evap_eff):
-            icl_base = np.ones(17) * evap_eff
-        else:
-            icl_base = np.array(evap_eff)
-    else:
-        # Use iclo as provided
-        if np.isscalar(iclo):
-            icl_base = np.ones(17) * iclo
-        else:
-            icl_base = np.array(iclo)
-
-    # The evaporative permeability efficiency used for calculating the
-    # clothing evaporative resistance comes either from the ``evap_eff``
-    # argument or from ``iclo``.  We do not modify this efficiency here
-    # based on water absorption; that effect is handled in the main
-    # thermoregulation module.
-    iclo_arr = icl_base
-    r_ecl = r_cl / (lewis_rate * iclo_arr)
-    # Total evaporative resistance
-    r_et = r_ea / fcl + r_ecl
+    r_t, r_a, r_cl = dry_r(hc, hr, clo)
+    r_et, r_ea, r_ecl = wet_r(hc, clo, iclo)
 
     return to, r_t, r_et, r_a, r_cl, r_ea, r_ecl, fcl
 

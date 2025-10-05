@@ -218,40 +218,6 @@ class JOS3():
         self._va = np.ones(17)*0.1
         self._clo = np.zeros(17)
         self._iclo = np.ones(17) * 0.45
-        # Clothing emissivity for each body segment (0–1). Default 0.95.
-        # Represents the ability of clothing to emit thermal radiation. A value of 1
-        # corresponds to a perfect black body, while lower values reduce radiative
-        # heat transfer. Either a scalar or a 17-length iterable can be supplied;
-        # scalars will be broadcast to all segments.
-        self._emissivity = np.ones(17) * 0.95
-        # Clothing air permeability for each body segment (0–1). Default 1.0.
-        # Describes how freely air can flow through the clothing layer. A value
-        # of 1 represents fully permeable (no wind block), while values closer to
-        # 0 represent windproof garments. Scalars are broadcast to all segments.
-        self._airperm = np.ones(17)
-
-        # --- Water absorption parameters ---
-        # Fraction of produced sweat absorbed by the clothing.  A value of
-        # 0 means no absorption (all sweat immediately evaporates), while
-        # 1 means all produced sweat is stored in the clothing.  Scalars are
-        # broadcast to all segments.
-        self._waterabs = np.zeros(17)
-        # Current amount of water stored in the clothing on each segment [g].
-        # At initialisation the clothing is dry (no stored water).  The
-        # storage increases when sweat is absorbed and decreases by
-        # evaporation according to the release time constant.
-        self._water_storage = np.zeros(17)
-        # Characteristic time constant for water release [s].  This
-        # parameter controls how quickly water stored in the clothing
-        # evaporates when no additional moisture is supplied.  Higher values
-        # correspond to slower drying fabrics.  Scalars are broadcast to
-        # all segments.  Default is one hour (3600 s).
-        self._release_tau = np.ones(17) * 3600.0
-        # Maximum water storage capacity per segment [g].  This limits how
-        # much water the clothing can hold.  If storage exceeds this value,
-        # the excess evaporates immediately.  Scalars are broadcast to
-        # all segments.  Default is 100 g per segment.
-        self._max_storage = np.ones(17) * 100.0
         self._par = 1.25 # Physical activity ratio
         self._posture = "standing"
         self._hc = None
@@ -371,18 +337,9 @@ class JOS3():
             hr = self._hr
 
 
-        # Apply clothing properties to heat transfer coefficients
-        perm = _to17array(self._airperm)
-        hc = hc * perm
-        eps = _to17array(self._emissivity)
-        hr = hr * eps
-
-        # Operative temp. [oC], heat and evaporative heat resistance [m2.K/W], [m2.kPa/W]
+        # Operarive temp. [oC], heat and evaporative heat resistance [m2.K/W], [m2.kPa/W]
         to = threg.operative_temp(self._ta, self._tr, hc, hr,)
         r_t = threg.dry_r(hc, hr, self._clo, pt=self._atmospheric_pressure)
-        # Calculate evaporative resistance using the intrinsic clothing vapor
-        # permeability.  Water absorption effects are handled separately in
-        # the evaporation calculation.
         r_et = threg.wet_r(hc, self._clo, iclo=self._iclo, pt=self._atmospheric_pressure)
 
         #------------------------------------------------------------------
@@ -399,79 +356,11 @@ class JOS3():
         err_cr = tcr - setpt_cr
         err_sk = tsk - setpt_sk
 
-        # Skin wettedness [-], Esk, Emax, Esw [W]
+        # Skinwettedness [-], Esk, Emax, Esw [W]
         wet, e_sk, e_max, e_sweat = threg.evaporation(
                 err_cr, err_sk, tsk,
                 self._ta, self._rh, r_et,
                 self._height, self._weight, self._bsa_equation, self._age)
-
-        # ------------------------------------------------------------------
-        # Preserve the original sweating energy before applying any water
-        # absorption effects.  This value represents the rate of sweat
-        # production (energy per unit area) calculated by the base
-        # thermoregulation model.  Weight loss due to sweating should be
-        # based on this unmodified value, not the post‑processed value
-        # after storage and delayed evaporation.  We copy the array so
-        # subsequent modifications of ``e_sweat`` do not affect the
-        # stored reference.
-        e_sweat_orig = e_sweat.copy()
-
-        # ------------------------------------------------------------------
-        # Water absorption and delayed evaporation
-        # ------------------------------------------------------------------
-        # Convert the original evaporative heat loss at the skin (e_sweat_orig)
-        # to the mass rate of sweat production [g/s].  The latent heat of
-        # vaporisation is approximated as 2418 J/g.  Note that sweat
-        # production is determined from the original e_sweat values and
-        # does not depend on subsequent storage effects.
-        latent_heat = 2418.0  # J/g
-        # Mass rate of sweat production per segment [g/s]
-        m_sweat_rate = e_sweat_orig / latent_heat
-        # Total mass of sweat produced in this time step [g]
-        m_sweat = m_sweat_rate * dtime
-        # Fraction of sweat absorbed into clothing
-        abs_frac = _to17array(self._waterabs)
-        # Mass of sweat absorbed by clothing
-        m_absorbed = abs_frac * m_sweat
-        # Mass of sweat that evaporates immediately (does not enter storage)
-        m_evap_immediate = (1.0 - abs_frac) * m_sweat
-        # Update water storage (current water in clothing) [g]
-        self._water_storage = self._water_storage + m_absorbed
-        # Limit storage by maximum capacity; any excess moisture is assumed
-        # to drip off or evaporate immediately.  Overflow mass is added
-        # directly to the immediate evaporation term.
-        overflow = np.maximum(self._water_storage - self._max_storage, 0.0)
-        m_evap_immediate = m_evap_immediate + overflow
-        # Cap the stored water at the maximum capacity
-        self._water_storage = np.minimum(self._water_storage, self._max_storage)
-        # Release stored water according to the release time constant τ.
-        # The release rate [g/s] is the stored water divided by τ.
-        release_rate = self._water_storage / self._release_tau
-        # Amount of water released during this time step [g]
-        m_release = release_rate * dtime
-        # Ensure we do not release more water than is currently stored
-        m_release = np.minimum(m_release, self._water_storage)
-        # Update storage after release
-        self._water_storage = self._water_storage - m_release
-        # Total mass evaporated in this time step [g]
-        m_evap_total = m_evap_immediate + m_release
-        # Mass evaporation rate [g/s]
-        m_evap_rate = m_evap_total / dtime
-        # Convert the total evaporated mass back to a heat loss rate [W]
-        # energy (J/s) = mass (g/s) * latent_heat (J/g)
-        e_evap_rate = m_evap_rate * latent_heat
-        # Compute the new wettedness.  We follow the same formulation as
-        # thermoregulation: wet = 0.06 + 0.94*(e_evap_rate/e_max), capped
-        # at 1.  When e_max is zero (unlikely), avoid division by zero.
-        ratio_e = np.divide(e_evap_rate, e_max, out=np.zeros_like(e_evap_rate), where=e_max > 0)
-        wet_new = 0.06 + 0.94 * ratio_e
-        wet_new = np.clip(wet_new, 0.0, 1.0)
-        # Compute new evaporative heat loss at the skin [W]
-        e_sk = wet_new * e_max
-        # Compute new effective sweating energy [W]
-        e_sweat = (wet_new - 0.06) / 0.94 * e_max
-        # Update wet variable
-        wet = wet_new
 
         # Skin blood flow, basal skin blood flow [L/h]
         bf_sk = threg.skin_bloodflow(err_cr, err_sk,
@@ -532,14 +421,9 @@ class JOS3():
         co = threg.sum_bf(
                 bf_cr, bf_ms, bf_fat, bf_sk, bf_ava_hand, bf_ava_foot)
 
-        # Weight loss rate by evaporation [g/sec].  Weight loss is based
-        # on the original rate of sweat production (before absorption into
-        # the clothing) plus the baseline insensible perspiration.  Use
-        # the stored value ``e_sweat_orig`` here so that absorption and
-        # delayed release of sweat do not influence the body’s mass loss.
-        latent_heat_w = 2418.0
-        wlesk = (e_sweat_orig + 0.06 * e_max) / latent_heat_w
-        wleres = res_lh / latent_heat_w
+        # Weight loss rate by evaporation [g/sec]
+        wlesk = (e_sweat + 0.06*e_max) / 2418
+        wleres = res_lh / 2418
 
         #------------------------------------------------------------------
         # Matrix
@@ -896,13 +780,6 @@ class JOS3():
         """
         hc = threg.fixed_hc(threg.conv_coef(self._posture, self._va, self._ta, self.Tsk,), self._va)
         hr = threg.fixed_hr(threg.rad_coef(self._posture,))
-        # scale convective and radiative coefficients according to clothing properties
-        # Air permeability reduces convective heat transfer (wind‑blocking garments)
-        perm = _to17array(self._airperm)
-        hc = hc * perm
-        # Emissivity reduces radiative heat transfer
-        eps = _to17array(self._emissivity)
-        hr = hr * eps
         to = threg.operative_temp(self._ta, self._tr, hc, hr,)
         return to
     @To.setter
@@ -987,195 +864,6 @@ class JOS3():
         self._clo = _to17array(inp)
 
     @property
-    def Icl_emissivity(self):
-        """
-        Getter for clothing emissivity.
-
-        Returns
-        -------
-        numpy.ndarray (17,)
-            Segment‑wise emissivity coefficients. Values between 0 and 1
-            determine how much radiant heat is emitted; 1 means full emission,
-            lower values reduce radiative heat transfer.
-        """
-        return self._emissivity
-
-    @Icl_emissivity.setter
-    def Icl_emissivity(self, inp):
-        """
-        Setter for clothing emissivity.
-
-        Parameters
-        ----------
-        inp : int, float, list or array-like
-            Either a scalar or an iterable of length 17. If a scalar is
-            provided, it is broadcast to all segments. Typical values lie
-            between 0 (no emission) and 1 (perfect emitter).
-        """
-        self._emissivity = _to17array(inp)
-
-    @property
-    def Icl_airperm(self):
-        """
-        Getter for clothing air permeability.
-
-        Returns
-        -------
-        numpy.ndarray (17,)
-            Segment‑wise air permeability coefficients. Values between
-            0 and 1 describe the degree of wind penetration through the
-            clothing: 1 means no wind protection (air flows freely), 0
-            represents a fully windproof garment.
-        """
-        return self._airperm
-
-    @Icl_airperm.setter
-    def Icl_airperm(self, inp):
-        """
-        Setter for clothing air permeability.
-
-        Parameters
-        ----------
-        inp : int, float, list or array-like
-            Either a scalar or an iterable of length 17. When a scalar is
-            supplied, it is broadcast to all segments. Values should
-            typically be between 0 (windproof) and 1 (fully permeable).
-        """
-        self._airperm = _to17array(inp)
-
-    # -----------------------------------------------------------------
-    # Water absorption parameters
-    # -----------------------------------------------------------------
-    @property
-    def Icl_waterabs(self):
-        """
-        Getter for clothing sweat absorption fraction.
-
-        Each element represents the fraction of newly produced sweat on a
-        body segment that is absorbed into the clothing rather than
-        evaporating immediately. 0 = keine Aufnahme (alles verdunstet
-        sofort), 1 = komplette Aufnahme.  Scalars are broadcast to
-        all segments.
-        """
-        return self._waterabs
-
-    @Icl_waterabs.setter
-    def Icl_waterabs(self, inp):
-        """
-        Setter for clothing sweat absorption fraction.
-
-        Accepts a scalar or iterable of length 17.  Values are clipped
-        between 0 and 1.  Scalars are broadcast across all segments.
-        """
-        arr = _to17array(inp)
-        arr = np.clip(arr, 0.0, 1.0)
-        self._waterabs = arr
-
-    # Provide an alias with an underscore to accommodate alternate naming
-    # conventions.  ``Icl_water_abs`` simply forwards to ``Icl_waterabs``.
-    @property
-    def Icl_water_abs(self):  # pragma: no cover - alias
-        """
-        Alias for :pyattr:`Icl_waterabs`.
-
-        Some code or user interfaces may refer to the clothing sweat
-        absorption fraction with an underscore in the name.  This
-        property provides access to the same underlying data as
-        :pyattr:`Icl_waterabs`.
-        """
-        return self.Icl_waterabs
-
-    @Icl_water_abs.setter  # pragma: no cover - alias
-    def Icl_water_abs(self, inp):
-        self.Icl_waterabs = inp
-
-    @property
-    def release_tau(self):
-        """
-        Getter for the water release time constant τ [s].
-
-        This parameter controls how quickly water stored in the clothing
-        evaporates back into the environment.  Larger values indicate
-        slower drying fabrics.  Scalars are broadcast to all segments.
-        """
-        return self._release_tau
-
-    @release_tau.setter
-    def release_tau(self, inp):
-        """
-        Setter for the water release time constant τ [s].
-
-        Accepts a scalar or iterable of length 17.  Values must be
-        positive; non‑positive entries are replaced with a small positive
-        number to avoid division by zero.  Scalars are broadcast across
-        all segments.
-        """
-        arr = _to17array(inp)
-        arr = np.maximum(arr, 1e-3)
-        self._release_tau = arr
-
-    @property
-    def max_storage(self):
-        """
-        Getter for the maximum water storage capacity [g].
-
-        Specifies the maximum amount of water each clothing segment can
-        hold before excess moisture instantly evaporates or drips off.
-        Scalars are broadcast to all segments.
-        """
-        return self._max_storage
-
-    @max_storage.setter
-    def max_storage(self, inp):
-        """
-        Setter for the maximum water storage capacity [g].
-
-        Accepts a scalar or iterable of length 17.  Values must be
-        positive; non‑positive entries are replaced with a small positive
-        number.  Scalars are broadcast across all segments.
-        """
-        arr = _to17array(inp)
-        arr = np.maximum(arr, 1e-6)
-        self._max_storage = arr
-
-    @property
-    def Icl_evap_eff(self):
-        """
-        Getter for clothing evaporative efficiency (vapor permeation efficiency).
-
-        This coefficient describes how easily moisture vapor passes through
-        clothing.  Values range from 0 (no vapor permeation; completely
-        waterproof) to 1 (full permeation).  Typical textile clothing has an
-        efficiency around 0.45.  Internally this property maps to the
-        variable ``_iclo`` which is used in the evaporation resistance
-        calculation.  If a scalar is provided it is broadcast to all
-        17 segments.
-
-        Returns
-        -------
-        numpy.ndarray (17,)
-            Segment‑wise vapor permeation efficiencies.
-        """
-        return self._iclo
-
-    @Icl_evap_eff.setter
-    def Icl_evap_eff(self, inp):
-        """
-        Setter for clothing evaporative efficiency.
-
-        Parameters
-        ----------
-        inp : int, float, list or array-like
-            Either a scalar value or an iterable of length 17.  Values
-            should lie between 0 and 1, where higher values indicate more
-            efficient moisture transport through the clothing layer.  The
-            input is broadcast across all segments when a scalar is
-            provided.
-        """
-        self._iclo = _to17array(inp)
-
-
-    @property
     def PAR(self):
         """
         Getter
@@ -1235,11 +923,6 @@ class JOS3():
         """
         hc = threg.fixed_hc(threg.conv_coef(self._posture, self._va, self._ta, self.Tsk,), self._va)
         hr = threg.fixed_hr(threg.rad_coef(self._posture,))
-        # apply clothing properties: air permeability and emissivity
-        perm = _to17array(self._airperm)
-        hc = hc * perm
-        eps = _to17array(self._emissivity)
-        hr = hr * eps
         return threg.dry_r(hc, hr, self._clo)
 
     @property
@@ -1253,12 +936,6 @@ class JOS3():
             Wet (Evaporative) heat resistances between the skin and ambience areas by local body segments [Pa.m2/W].
         """
         hc = threg.fixed_hc(threg.conv_coef(self._posture, self._va, self._ta, self.Tsk,), self._va)
-        # apply air permeability to convective coefficient when calculating evaporative resistance
-        perm = _to17array(self._airperm)
-        hc = hc * perm
-        # Return evaporative resistance based solely on intrinsic clothing vapor
-        # permeation efficiency.  Water absorption effects are handled in
-        # the evaporation and weight-loss calculations.
         return threg.wet_r(hc, self._clo, self._iclo)
 
     @property
