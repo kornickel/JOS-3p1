@@ -13,7 +13,7 @@ if __name__ == "__main__":
     mod.RH = 70
     mod.Va = 2
     mod.Icl = 0.6
-    mod.Icl_airperm = 0.5       # 50 % luftdurchlässig (Skalar -> alle Segmente)
+    mod.Icl_airperm = 0      # 50 % luftdurchlässig (Skalar -> alle Segmente)
     mod.Icl_evap_eff = 0.1      # 60 % Verdunstungseffizienz --> sollte das eher durch iclo ersetzt werden? Ist ja eigentlich schon implementiert
     mod.Icl_emissivity = 0.1    # 10 % Emissivität der Kleidung
     mod.Icl_water_abs = 0.3     # 30 % der Schweißmenge wird im Gewebe gespeichert
@@ -38,7 +38,7 @@ if __name__ == "__main__":
     mod.RH = 70
     mod.Va = 2
     mod.Icl = 0.6
-    mod.Icl_airperm = 0.5       # 50 % luftdurchlässig (Skalar -> alle Segmente)
+    mod.Icl_airperm = 0       # 50 % luftdurchlässig (Skalar -> alle Segmente)
     mod.Icl_evap_eff = 0.1      # 60 % Verdunstungseffizienz
     mod.Icl_emissivity = 0.1    # 10 % Emissivität der Kleidung
     mod.Icl_water_abs = 0.3     # 30 % der Schweißmenge wird im Gewebe gespeichert
@@ -56,7 +56,7 @@ if __name__ == "__main__":
     mod.RH = 20
     mod.Va = 3
     mod.Icl = 0.1
-    mod.Icl_airperm = 0.5       # 50 % luftdurchlässig (Skalar -> alle Segmente)
+    mod.Icl_airperm = 0       # 50 % luftdurchlässig (Skalar -> alle Segmente)
     mod.Icl_evap_eff = 0.1      # 60 % Verdunstungseffizienz
     mod.Icl_emissivity = 0.1    # 10 % Emissivität der Kleidung
     mod.Icl_water_abs = 0.3     # 30 % der Schweißmenge wird im Gewebe gespeichert
