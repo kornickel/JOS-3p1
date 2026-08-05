@@ -218,12 +218,13 @@ class JOS3():
         self._va = np.ones(17)*0.1
         self._clo = np.zeros(17)
         self._iclo = np.ones(17) * 0.45
-        # Clothing emissivity for each body segment (0–1). Default 0.95.
-        # Represents the ability of clothing to emit thermal radiation. A value of 1
-        # corresponds to a perfect black body, while lower values reduce radiative
-        # heat transfer. Either a scalar or a 17-length iterable can be supplied;
-        # scalars will be broadcast to all segments.
-        self._emissivity = np.ones(17) * 0.95
+        # Clothing emissivity for each body segment (0–1). Default 1.0 (neutral --
+        # matches the base model, whose empirical hr coefficients already assume
+        # near-blackbody skin/clothing). A value of 1 corresponds to a perfect
+        # black body, while lower values (e.g. reflective/foil garments) reduce
+        # radiative heat transfer. Either a scalar or a 17-length iterable can be
+        # supplied; scalars will be broadcast to all segments.
+        self._emissivity = np.ones(17)
         # Clothing air permeability for each body segment (0–1). Default 1.0.
         # Describes how freely air can flow through the clothing layer. A value
         # of 1 represents fully permeable (no wind block), while values closer to
@@ -371,15 +372,19 @@ class JOS3():
             hr = self._hr
 
 
-        # Apply clothing properties to heat transfer coefficients
+        # Apply clothing properties to heat transfer coefficients.
+        # Air permeability (wind-blocking) only affects the dry (sensible)
+        # pathway -- vapor transport is governed independently by the
+        # intrinsic clothing vapor permeability (Icl_evap_eff), so the
+        # evaporative resistance below is computed from the unscaled hc.
         perm = _to17array(self._airperm)
-        hc = hc * perm
+        hc_dry = hc * perm
         eps = _to17array(self._emissivity)
         hr = hr * eps
 
         # Operative temp. [oC], heat and evaporative heat resistance [m2.K/W], [m2.kPa/W]
-        to = threg.operative_temp(self._ta, self._tr, hc, hr,)
-        r_t = threg.dry_r(hc, hr, self._clo, pt=self._atmospheric_pressure)
+        to = threg.operative_temp(self._ta, self._tr, hc_dry, hr,)
+        r_t = threg.dry_r(hc_dry, hr, self._clo, pt=self._atmospheric_pressure)
         # Calculate evaporative resistance using the intrinsic clothing vapor
         # permeability.  Water absorption effects are handled separately in
         # the evaporation calculation.
@@ -437,20 +442,30 @@ class JOS3():
         m_evap_immediate = (1.0 - abs_frac) * m_sweat
         # Update water storage (current water in clothing) [g]
         self._water_storage = self._water_storage + m_absorbed
-        # Limit storage by maximum capacity; any excess moisture is assumed
-        # to drip off or evaporate immediately.  Overflow mass is added
-        # directly to the immediate evaporation term.
-        overflow = np.maximum(self._water_storage - self._max_storage, 0.0)
-        m_evap_immediate = m_evap_immediate + overflow
-        # Cap the stored water at the maximum capacity
+        # Limit storage by maximum capacity; the clothing cannot hold more
+        # than max_storage, so any excess simply drips off. Dripped water
+        # provides no evaporative cooling (unlike the original version of
+        # this code, it is NOT added to m_evap_immediate) -- its mass loss
+        # from the body is already accounted for via e_sweat_orig/wlesk.
         self._water_storage = np.minimum(self._water_storage, self._max_storage)
+        # Evaporative capacity available this step [g], derived from e_max --
+        # the same skin-to-ambient vapor pressure gradient that bounds all
+        # evaporation. Stored water may only be released up to this budget,
+        # net of what m_evap_immediate already uses. This keeps the water
+        # storage mass balance consistent with the energy balance: e.g. in
+        # saturated/humid air (e_max ~ 0) stored water is not silently
+        # drained without producing the corresponding cooling effect.
+        max_evap_mass = e_max / latent_heat * dtime
+        remaining_capacity = np.maximum(max_evap_mass - m_evap_immediate, 0.0)
         # Release stored water according to the release time constant τ.
         # The release rate [g/s] is the stored water divided by τ.
         release_rate = self._water_storage / self._release_tau
         # Amount of water released during this time step [g]
         m_release = release_rate * dtime
-        # Ensure we do not release more water than is currently stored
+        # Ensure we do not release more water than is currently stored, and
+        # not more than the remaining evaporative capacity allows.
         m_release = np.minimum(m_release, self._water_storage)
+        m_release = np.minimum(m_release, remaining_capacity)
         # Update storage after release
         self._water_storage = self._water_storage - m_release
         # Total mass evaporated in this time step [g]
@@ -1010,9 +1025,11 @@ class JOS3():
         inp : int, float, list or array-like
             Either a scalar or an iterable of length 17. If a scalar is
             provided, it is broadcast to all segments. Typical values lie
-            between 0 (no emission) and 1 (perfect emitter).
+            between 0 (no emission) and 1 (perfect emitter). Values are
+            floored at a small epsilon to avoid a zero radiative
+            coefficient (see ``_MIN_CLO_COEF``).
         """
-        self._emissivity = _to17array(inp)
+        self._emissivity = np.clip(_to17array(inp), _MIN_CLO_COEF, 1.0)
 
     @property
     def Icl_airperm(self):
@@ -1040,8 +1057,12 @@ class JOS3():
             Either a scalar or an iterable of length 17. When a scalar is
             supplied, it is broadcast to all segments. Values should
             typically be between 0 (windproof) and 1 (fully permeable).
+            Values are floored at a small epsilon to avoid a zero
+            convective coefficient, which would make the evaporative
+            resistance infinite and corrupt the simulation state (see
+            ``_MIN_CLO_COEF``).
         """
-        self._airperm = _to17array(inp)
+        self._airperm = np.clip(_to17array(inp), _MIN_CLO_COEF, 1.0)
 
     # -----------------------------------------------------------------
     # Water absorption parameters
@@ -1253,9 +1274,9 @@ class JOS3():
             Wet (Evaporative) heat resistances between the skin and ambience areas by local body segments [Pa.m2/W].
         """
         hc = threg.fixed_hc(threg.conv_coef(self._posture, self._va, self._ta, self.Tsk,), self._va)
-        # apply air permeability to convective coefficient when calculating evaporative resistance
-        perm = _to17array(self._airperm)
-        hc = hc * perm
+        # Air permeability (wind-blocking) affects only the dry pathway (see
+        # Rt/_run) -- vapor transport is governed independently by the
+        # intrinsic clothing vapor permeability, so hc is left unscaled here.
         # Return evaporative resistance based solely on intrinsic clothing vapor
         # permeation efficiency.  Water absorption effects are handled in
         # the evaporation and weight-loss calculations.
@@ -1441,6 +1462,14 @@ class JOS3():
                 self._height, self._weight, self._age,
                 self._sex, self._bmr_equation,)
         return bmr / self.BSA.sum()
+
+
+# Lower bound for Icl_airperm/Icl_emissivity. hc and hr appear in
+# denominators downstream (e.g. wet_r's r_ea = 1/(hc*lewis_rate*...)), so an
+# exact 0 causes a division by zero that poisons the simulation state
+# (water_storage becomes NaN and never recovers). A small positive floor
+# keeps "fully windproof"/"non-emissive" as a practical limit instead.
+_MIN_CLO_COEF = 1e-3
 
 
 def _to17array(inp):
