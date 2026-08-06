@@ -13,12 +13,12 @@ if __name__ == "__main__":
     mod.RH = 70
     mod.Va = 2
     mod.Icl = 0.6
-    mod.Icl_airperm = 0      # winddicht (Skalar -> alle Segmente); wird intern auf einen kleinen Minimalwert > 0 geklemmt
-    mod.Icl_evap_eff = 0.1      # 10 % Verdunstungseffizienz (entspricht iclo)
-    mod.Icl_emissivity = 0.1    # 10 % Emissivität der Kleidung
-    mod.Icl_water_abs = 0.3     # 30 % der Schweißmenge wird im Gewebe gespeichert
-    mod.release_tau = 3600      # Wasser wird über eine Stunde abgegeben
-    mod.max_storage = 80        # Speichervermögen 80 g pro Segment
+    mod.Icl_airperm = 0      # windproof (scalar -> broadcast to all segments); internally clamped to a small minimum value > 0
+    mod.Icl_evap_eff = 0.1      # 10% evaporative efficiency (equivalent to iclo)
+    mod.Icl_emissivity = 0.1    # 10% clothing emissivity
+    mod.Icl_water_abs = 0.3     # 30% of the sweat produced is absorbed and stored in the fabric
+    mod.release_tau = 3600      # stored moisture is released over one hour
+    mod.max_storage = 80        # storage capacity of 80 g per segment
     mod.simulate(60)
 
     d = mod.dict_results()
@@ -38,12 +38,12 @@ if __name__ == "__main__":
     mod.RH = 70
     mod.Va = 2
     mod.Icl = 0.6
-    mod.Icl_airperm = 0       # winddicht (Skalar -> alle Segmente); wird intern auf einen kleinen Minimalwert > 0 geklemmt
-    mod.Icl_evap_eff = 0.1      # 10 % Verdunstungseffizienz (entspricht iclo)
-    mod.Icl_emissivity = 0.1    # 10 % Emissivität der Kleidung
-    mod.Icl_water_abs = 0.3     # 30 % der Schweißmenge wird im Gewebe gespeichert
-    mod.release_tau = 3600      # Wasser wird über eine Stunde abgegeben
-    mod.max_storage = 80        # Speichervermögen 80 g pro Segment
+    mod.Icl_airperm = 0       # windproof (scalar -> broadcast to all segments); internally clamped to a small minimum value > 0
+    mod.Icl_evap_eff = 0.1      # 10% evaporative efficiency (equivalent to iclo)
+    mod.Icl_emissivity = 0.1    # 10% clothing emissivity
+    mod.Icl_water_abs = 0.3     # 30% of the sweat produced is absorbed and stored in the fabric
+    mod.release_tau = 3600      # stored moisture is released over one hour
+    mod.max_storage = 80        # storage capacity of 80 g per segment
     # mod._iclo = 0.45
     mod.simulate(60)
     print("\nAfter Hot Exposure")
@@ -56,12 +56,12 @@ if __name__ == "__main__":
     mod.RH = 20
     mod.Va = 3
     mod.Icl = 0.1
-    mod.Icl_airperm = 0       # winddicht (Skalar -> alle Segmente); wird intern auf einen kleinen Minimalwert > 0 geklemmt
-    mod.Icl_evap_eff = 0.1      # 10 % Verdunstungseffizienz (entspricht iclo)
-    mod.Icl_emissivity = 0.1    # 10 % Emissivität der Kleidung
-    mod.Icl_water_abs = 0.3     # 30 % der Schweißmenge wird im Gewebe gespeichert
-    mod.release_tau = 3600      # Wasser wird über eine Stunde abgegeben
-    mod.max_storage = 80        # Speichervermögen 80 g pro Segment
+    mod.Icl_airperm = 0       # windproof (scalar -> broadcast to all segments); internally clamped to a small minimum value > 0
+    mod.Icl_evap_eff = 0.1      # 10% evaporative efficiency (equivalent to iclo)
+    mod.Icl_emissivity = 0.1    # 10% clothing emissivity
+    mod.Icl_water_abs = 0.3     # 30% of the sweat produced is absorbed and stored in the fabric
+    mod.release_tau = 3600      # stored moisture is released over one hour
+    mod.max_storage = 80        # storage capacity of 80 g per segment
     mod.simulate(60)
     print("\nAfter Cold Exposure")
     print("TcrHead: {:.3f} [oC]".format(mod.Tcr[0]))
