@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMeta } from "../../lib/api";
 import { BODY_NAMES, bodyLabel } from "../../lib/bodyNames";
 import { divergingColor, sequentialColor } from "../../lib/colorScale";
@@ -39,6 +39,16 @@ export function BodyDiagramResult({ result }: { result: SimulateResponse }) {
 
   const [selected, setSelected] = useState<string | null>(null);
   const [timeIndex, setTimeIndex] = useState(timeSeconds.length - 1);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const maxIndex = timeSeconds.length - 1;
+
+  useEffect(() => {
+    if (!isPlaying) return;
+    const id = setInterval(() => {
+      setTimeIndex((i) => (i >= maxIndex ? 0 : i + 1));
+    }, 120);
+    return () => clearInterval(id);
+  }, [isPlaying, maxIndex]);
 
   const activeValue = selected ?? candidates[0]?.value ?? null;
   const active = candidates.find((c) => c.value === activeValue);
@@ -85,12 +95,29 @@ export function BodyDiagramResult({ result }: { result: SimulateResponse }) {
           <ResultLegend min={active.diverging ? -absMax : min} max={active.diverging ? absMax : max} unit={active.unit} diverging={active.diverging} />
         </div>
       </div>
-      <TimeScrubber
-        index={timeIndex}
-        maxIndex={timeSeconds.length - 1}
-        timeLabel={`${minutes.toFixed(0)} min`}
-        onChange={setTimeIndex}
-      />
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => setIsPlaying((p) => !p)}
+          disabled={maxIndex === 0}
+          aria-label={isPlaying ? "Pause" : "Abspielen"}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-sm disabled:opacity-30"
+          style={{ borderColor: "var(--gridline)", color: "var(--series-1)" }}
+        >
+          {isPlaying ? "⏸" : "▶"}
+        </button>
+        <div className="flex-1">
+          <TimeScrubber
+            index={timeIndex}
+            maxIndex={maxIndex}
+            timeLabel={`${minutes.toFixed(0)} min`}
+            onChange={(i) => {
+              setIsPlaying(false);
+              setTimeIndex(i);
+            }}
+          />
+        </div>
+      </div>
       <div className="mt-4 flex justify-center gap-8">
         <BodyFront
           selectedRegion={null}
