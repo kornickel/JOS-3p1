@@ -7,3 +7,4 @@ jos3.egg-info/
 *.csv
 test.py
 *result.png
+.venv/
