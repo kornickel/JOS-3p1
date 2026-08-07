@@ -28,16 +28,13 @@ def _run_direct():
     since no parameter changes within a segment).
 
     Reads results back from `_history` (like `_record()` in the original
-    script does: `h = mod._history[-1]; h["WetMean"]`), NOT from the live
-    `model.Wet`/`WetMean` property getters. Those getters recompute
-    wettedness straight from `threg.evaporation()` and do not know about
-    this fork's clothing-water-storage adjustment (`_run()` computes an
-    absorption/release-adjusted `wet_new` locally and only ever writes it
-    into `_history`/`dict_results()`, never back into a persistent
-    attribute) -- so the getters and the recorded history genuinely
-    disagree once any water absorption is in play. `_history` is the
-    correct ground truth here since it's what to_csv()/dict_results() (and
-    therefore this backend's /api/simulate) actually expose.
+    script does: `h = mod._history[-1]; h["WetMean"]`), matching what
+    to_csv()/dict_results() (and therefore this backend's /api/simulate)
+    expose. `model.WetMean` (the live property getter) is captured
+    alongside it and checked for agreement in the test below: `_run()`
+    persists its water-absorption-adjusted `wet` into `self._last_wet`
+    precisely so the getter and the recorded history never disagree, even
+    once clothing water absorption is in play.
     """
     model = JOS3(**MODEL_CONFIG)
     log = []
@@ -52,6 +49,7 @@ def _run_direct():
         h = model._history[-1]
         log.append(dict(
             tcr=h["Tcr"][2], tsk=h["TskMean"], wet=h["WetMean"],
+            live_wet_mean=model.WetMean,
             store=model._water_storage.mean(),
             airperm=model.Icl_airperm.mean(), waterabs=model.Icl_waterabs.mean(),
         ))
@@ -79,6 +77,10 @@ def test_mountain_hike_matches_direct_model_driving(client):
         assert math.isclose(api_tcr, direct["tcr"], rel_tol=1e-9, abs_tol=1e-9), bound["id"]
         assert math.isclose(api_tsk, direct["tsk"], rel_tol=1e-9, abs_tol=1e-9), bound["id"]
         assert math.isclose(api_wet, direct["wet"], rel_tol=1e-9, abs_tol=1e-9), bound["id"]
+        # The live model.WetMean getter must agree with the recorded history
+        # -- regression guard for the water-absorption/getter divergence
+        # fixed by persisting `wet` into `self._last_wet` in _run().
+        assert math.isclose(direct["live_wet_mean"], direct["wet"], rel_tol=1e-9, abs_tol=1e-9), bound["id"]
         assert math.isclose(api_store, direct["store"], rel_tol=1e-9, abs_tol=1e-9), bound["id"]
         assert math.isclose(api_airperm, direct["airperm"], rel_tol=1e-9, abs_tol=1e-9), bound["id"]
         assert math.isclose(api_waterabs, direct["waterabs"], rel_tol=1e-9, abs_tol=1e-9), bound["id"]

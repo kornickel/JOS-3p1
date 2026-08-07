@@ -131,18 +131,37 @@ COMFORT_LOCAL: Dict[str, Dict[str, float]] = {
 # Part III, Table 2 -- 'individual force' of an opposite-sensation body part,
 # by three-piece regression over delta S_local.
 #   individual force = a (delta S_local - c) + b
+#
+# CORRECTION TO THE PRINTED TABLE ("a_hi", the delta >= 2 / heating column).
+# The published Table 2 (Building and Environment 45(2), p.11) disagrees with
+# itself: directly beneath that table, Figure 4's regression-line captions for
+# chest and hand give a_hi = 0.97 and 0.33, not the 0.40/0.10 printed in the
+# table. A second copy of the same table, embedded in the Figure 5 flow chart
+# (p.14), matches those captions and gives consistently larger a_hi for most
+# rows. Measuring the actual plotted regression lines in Figure 4 pixel-by-
+# -pixel (least-squares fit of the line's pixels, calibrated against the
+# chart's own axis gridlines) gives slopes of 0.968 (chest) and 0.333 (hand)
+# -- matching the caption/flow-chart figures, not the printed table, to within
+# measurement error. The values below therefore follow the caption/flow-chart
+# figures for every row where they differ from the printed table, EXCEPT
+# "foot": there the flow-chart copy also has a different threshold (c = +/-1
+# instead of +/-2), which points to a transcription/layout error in that one
+# cell rather than a second, valid dataset, so "foot" keeps the printed
+# table's values unchanged. "upper arm"/"lower arm" are unchanged too -- the
+# two table copies agree there (lower arm exactly; upper arm differs only by
+# 0.03, within rounding).
 OPPOSITE_FORCE: Dict[str, Dict[str, float]] = {
     #            delta <= -2            -2 < delta < 2        delta >= 2
-    "head":      {"a_lo": 0.54, "b_lo": -1.10, "a_mid": 0.50, "a_hi": 0.40, "b_hi": 1.10},
+    "head":      {"a_lo": 0.54, "b_lo": -1.10, "a_mid": 0.50, "a_hi": 0.69, "b_hi": 1.10},
     "neck":      {"a_lo": 0.65, "b_lo": -0.92, "a_mid": 0.46, "a_hi": 0.63, "b_hi": 0.92},
-    "chest":     {"a_lo": 0.91, "b_lo": -1.14, "a_mid": 0.57, "a_hi": 0.40, "b_hi": 1.14},
-    "back":      {"a_lo": 0.91, "b_lo": -0.92, "a_mid": 0.46, "a_hi": 0.20, "b_hi": 0.92},
-    "pelvis":    {"a_lo": 0.94, "b_lo": -0.64, "a_mid": 0.32, "a_hi": 0.60, "b_hi": 0.64},
+    "chest":     {"a_lo": 0.91, "b_lo": -1.14, "a_mid": 0.57, "a_hi": 0.97, "b_hi": 1.14},
+    "back":      {"a_lo": 0.91, "b_lo": -0.92, "a_mid": 0.46, "a_hi": 0.75, "b_hi": 0.92},
+    "pelvis":    {"a_lo": 0.94, "b_lo": -0.64, "a_mid": 0.32, "a_hi": 0.75, "b_hi": 0.64},
     "upper arm": {"a_lo": 0.43, "b_lo": -0.56, "a_mid": 0.28, "a_hi": 0.40, "b_hi": 0.56},
     "lower arm": {"a_lo": 0.37, "b_lo": -0.73, "a_mid": 0.38, "a_hi": 0.30, "b_hi": 0.73},
-    "hand":      {"a_lo": 0.25, "b_lo":  0.00, "a_mid": 0.00, "a_hi": 0.10, "b_hi": 0.00},
-    "thigh":     {"a_lo": 0.81, "b_lo": -0.60, "a_mid": 0.30, "a_hi": 0.40, "b_hi": 0.60},
-    "lower leg": {"a_lo": 0.70, "b_lo": -0.59, "a_mid": 0.29, "a_hi": 0.40, "b_hi": 0.59},
+    "hand":      {"a_lo": 0.25, "b_lo":  0.00, "a_mid": 0.00, "a_hi": 0.33, "b_hi": 0.00},
+    "thigh":     {"a_lo": 0.81, "b_lo": -0.60, "a_mid": 0.30, "a_hi": 0.82, "b_hi": 0.60},
+    "lower leg": {"a_lo": 0.70, "b_lo": -0.59, "a_mid": 0.29, "a_hi": 0.80, "b_hi": 0.59},
     "foot":      {"a_lo": 0.50, "b_lo":  0.00, "a_mid": 0.00, "a_hi": 0.60, "b_hi": 0.00},
 }
 

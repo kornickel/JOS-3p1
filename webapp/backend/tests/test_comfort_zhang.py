@@ -124,6 +124,35 @@ def test_one_cold_part_pulls_a_warm_body_down():
     assert cz.overall_sensation(with_cold_chest, PARTS) < cz.overall_sensation(warm, PARTS)
 
 
+def test_opposite_force_heating_branch_matches_corrected_paper_coefficients():
+    """The printed Table 2 in Zhang Part III disagrees with the paper's own
+    Figure 4 regression-line captions for a_hi (the delta_S_local >= 2 /
+    heating branch); OPPOSITE_FORCE follows the captions, not the printed
+    table (see the comment above OPPOSITE_FORCE for how this was verified
+    by pixel-measuring the actual plotted regression lines). Pin the
+    corrected values down for chest and hand, the two body parts with a
+    citable, independently measured regression line.
+    """
+    # Chest: Figure 4a's caption is "0.97 * delta_S_chest
+    # (delta_S_chest >= 2) + 1.14"; OPPOSITE_FORCE stores this as
+    # a*(delta-2)+b, so at delta=6.2 (the figure's rightmost data point)
+    # this must land near that value, not the printed table's
+    # 0.4*(6.2-2)+1.14=2.82.
+    chest = cz._individual_force("chest", 6.2)
+    assert chest == pytest.approx(0.97 * (6.2 - 2.0) + 1.14, abs=1e-9)
+    assert chest > 5.0  # printed-table value (a_hi=0.4) would have been 2.82
+
+    # Hand: caption "0.33 * delta_S_hand (delta_S_hand >= 2)", b_hi=0.
+    hand = cz._individual_force("hand", 6.6)
+    assert hand == pytest.approx(0.33 * (6.6 - 2.0), abs=1e-9)
+    assert hand > 1.4  # printed-table value (a_hi=0.1) would have been 0.46
+
+    # Continuity: every branch must still agree with its own b_hi at the
+    # delta=2 seam (a_hi*(2-2)+b_hi = b_hi), regardless of which a_hi is used.
+    for part, c in cz.OPPOSITE_FORCE.items():
+        assert cz._individual_force(part, 2.0) == pytest.approx(c["b_hi"], abs=1e-9), part
+
+
 def test_overall_comfort_is_driven_by_the_worst_parts():
     """One very uncomfortable part must dominate a body of comfortable ones."""
     good = [2.0] * len(PARTS)

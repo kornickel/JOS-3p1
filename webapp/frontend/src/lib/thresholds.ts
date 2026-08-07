@@ -124,6 +124,15 @@ function severityOf(v: number, t: MetricThreshold): { severity: Severity; direct
   return null;
 }
 
+/** How far past its limit a hit is, in the metric's own units -- always
+ * >= 0 for an actual hit. Direction-independent, so an "above" hit and a
+ * "below" hit on the same metric (e.g. TskMean running both too hot and too
+ * cold over the course of a run) can be compared on equal footing instead of
+ * comparing raw values that live on unrelated parts of the scale. */
+function marginOf(direction: "above" | "below", limit: number, value: number): number {
+  return direction === "above" ? value - limit : limit - value;
+}
+
 /** Scans a series and returns the single worst violation in it, if any. */
 function worstViolation(
   series: number[],
@@ -141,7 +150,7 @@ function worstViolation(
       worst === null ||
       (hit.severity === "critical" && worst.severity === "warning") ||
       (hit.severity === worst.severity &&
-        (hit.direction === "above" ? v > worst.peak : v < worst.peak));
+        marginOf(hit.direction, hit.limit, v) > marginOf(worst.direction, worst.limit, worst.peak));
     if (better) {
       worst = {
         labelKey: t.labelKey,
@@ -172,10 +181,19 @@ export function shiveringSeries(results: SimulateResponse["results"], bodyNames:
 
 /** Cumulative sweat + respiratory water loss as % of body mass. `Wle` is a
  * whole-body rate in g/s and `dt` the step length in seconds, both standard
- * JOS-3 outputs. */
+ * JOS-3 outputs.
+ *
+ * `Wle` counts sweat as lost the moment it's produced, whether it evaporates
+ * immediately or is absorbed into clothing (see src/jos3/jos3.py's water
+ * storage model) -- water sitting in `WaterStorageMean` hasn't actually left
+ * the body+clothing system yet, so it's netted back out here before turning
+ * the total into a body-mass percentage. As stored water is later released
+ * and evaporates, it drops out of `WaterStorageMean` and stays counted in
+ * the cumulative total, so the net figure catches up. */
 export function dehydrationSeries(results: SimulateResponse["results"], bodyMassKg: number): number[] {
   const wle = results.Wle as number[] | undefined;
   const dt = results.dt as number[] | undefined;
+  const stored = results.WaterStorageMean as number[] | undefined;
   const n = (results.ModTime as number[]).length;
   const out = new Array<number>(n).fill(0);
   if (!wle || bodyMassKg <= 0) return out;
@@ -183,7 +201,9 @@ export function dehydrationSeries(results: SimulateResponse["results"], bodyMass
   for (let i = 0; i < n; i++) {
     const step = typeof dt?.[i] === "number" ? dt[i] : 60;
     if (typeof wle[i] === "number" && Number.isFinite(wle[i])) grams += wle[i] * step;
-    out[i] = (grams / (bodyMassKg * 1000)) * 100;
+    const storedNow = typeof stored?.[i] === "number" ? stored[i] : 0;
+    const netGrams = Math.max(grams - storedNow, 0);
+    out[i] = (netGrams / (bodyMassKg * 1000)) * 100;
   }
   return out;
 }

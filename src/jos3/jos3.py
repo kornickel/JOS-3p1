@@ -253,6 +253,11 @@ class JOS3():
         # the excess evaporates immediately.  Scalars are broadcast to
         # all segments.  Default is 100 g per segment.
         self._max_storage = np.ones(17) * 100.0
+        # Skin wettedness from the most recent _run(), after the water
+        # absorption/delayed evaporation adjustment (see _run()). Backs the
+        # Wet/WetMean getters so they agree with dict_results()/to_csv()
+        # instead of recomputing a value that ignores that adjustment.
+        self._last_wet = np.zeros(17)
         self._par = 1.25 # Physical activity ratio
         self._posture = "standing"
         self._hc = None
@@ -487,6 +492,9 @@ class JOS3():
         e_sweat = (wet_new - 0.06) / 0.94 * e_max
         # Update wet variable
         wet = wet_new
+        # Persist for the Wet/WetMean getters (see __init__), so they agree
+        # with this step's dict_results()/to_csv() output.
+        self._last_wet = wet
 
         # Skin blood flow, basal skin blood flow [L/h]
         bf_sk = threg.skin_bloodflow(err_cr, err_sk,
@@ -1287,16 +1295,18 @@ class JOS3():
         """
         Getter
 
+        Returns the wettedness computed by the most recent simulation step,
+        i.e. the same value found in dict_results()/to_csv() -- including
+        the water absorption/delayed evaporation adjustment (see _run())
+        when clothing water absorption is in use, which a fresh recompute
+        from threg.evaporation() would not reflect.
+
         Returns
         -------
         Wet : numpy.ndarray (17,)
             Skin wettedness on local body segments [-].
         """
-        err_cr = self.Tcr - self.setpt_cr
-        err_sk = self.Tsk - self.setpt_sk
-        wet, *_ = threg.evaporation(err_cr, err_sk,
-                self._ta, self._rh, self.Ret, self._bsa_rate, self._age)
-        return wet
+        return self._last_wet
 
     @property
     def WetMean(self):
