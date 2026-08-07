@@ -1,11 +1,18 @@
 import { formatHex, interpolate } from "culori";
 
-// Anchors taken verbatim from the dataviz skill's validated reference
-// palette (references/palette.md) -- sequential ramp (100->700, blue,
-// light->dark) and the diverging blue<->red pair with neutral midpoint.
+// Deliberate departure from the dataviz skill's "sequential = one hue"
+// default: this ramp colors a continuous spatial scalar field over an
+// anatomy silhouette (temperature, wetness, ...), the exact case FEM/CFD
+// tools (ANSYS, ParaView, COMSOL, Fluent) use a multi-hue ramp for, to get
+// more perceptual resolution across a small per-region fill area. Anchors
+// sweep blue -> cyan -> green -> yellow -> orange -> red, interpolated in
+// OKLCH (below) to avoid the muddy-lightness-dip artifacts of classic
+// sRGB-interpolated "jet" ramps. Scope stays local to this file's sequential
+// path -- the diverging blue<->red pair and the 8-hue categorical palette
+// (charts, series) are untouched and still follow the skill's default.
 const SEQUENTIAL_STOPS = [
-  "#cde2fb", "#b7d3f6", "#9ec5f4", "#86b6ef", "#6da7ec", "#5598e7",
-  "#3987e5", "#2a78d6", "#256abf", "#1c5cab", "#184f95", "#104281", "#0d366b",
+  "#1a3a8f", "#1f5fd6", "#1c8fd6", "#17b6c4", "#23b483",
+  "#4fb83a", "#a8c92c", "#f0d514", "#f2941e", "#e3572c", "#b81f2b",
 ];
 
 const DIVERGING_COLD = "#2a78d6";
@@ -44,12 +51,12 @@ export function divergingColor(t: number, dark = isDarkMode()): string {
   return formatHex(fn(clamped)) ?? "#888888";
 }
 
-export function sequentialGradientCss(steps = 12): string {
+export function sequentialGradientCss(steps = 12, direction = "to right"): string {
   const stops = Array.from({ length: steps }, (_, i) => sequentialColor(i / (steps - 1)));
-  return `linear-gradient(to right, ${stops.join(", ")})`;
+  return `linear-gradient(${direction}, ${stops.join(", ")})`;
 }
 
-export function divergingGradientCss(steps = 12, dark = isDarkMode()): string {
+export function divergingGradientCss(steps = 12, dark = isDarkMode(), direction = "to right"): string {
   const stops = Array.from({ length: steps }, (_, i) => divergingColor((i / (steps - 1)) * 2 - 1, dark));
-  return `linear-gradient(to right, ${stops.join(", ")})`;
+  return `linear-gradient(${direction}, ${stops.join(", ")})`;
 }

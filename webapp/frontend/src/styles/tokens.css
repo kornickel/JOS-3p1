@@ -25,19 +25,19 @@
   --series-7: #4a3aa7; /* violet */
   --series-8: #e34948; /* red */
 
-  --seq-100: #cde2fb;
-  --seq-150: #b7d3f6;
-  --seq-200: #9ec5f4;
-  --seq-250: #86b6ef;
-  --seq-300: #6da7ec;
-  --seq-350: #5598e7;
-  --seq-400: #3987e5;
-  --seq-450: #2a78d6;
-  --seq-500: #256abf;
-  --seq-550: #1c5cab;
-  --seq-600: #184f95;
-  --seq-650: #104281;
-  --seq-700: #0d366b;
+  /* CFD-style multi-hue sequential ramp (body-diagram heatmap only) --
+     mirrors colorScale.ts's SEQUENTIAL_STOPS; see that file for rationale. */
+  --seq-100: #1a3a8f;
+  --seq-200: #1f5fd6;
+  --seq-300: #1c8fd6;
+  --seq-400: #17b6c4;
+  --seq-500: #23b483;
+  --seq-600: #4fb83a;
+  --seq-700: #a8c92c;
+  --seq-800: #f0d514;
+  --seq-900: #f2941e;
+  --seq-950: #e3572c;
+  --seq-999: #b81f2b;
 
   --div-pole-cold: #2a78d6;
   --div-pole-hot: #e34948;

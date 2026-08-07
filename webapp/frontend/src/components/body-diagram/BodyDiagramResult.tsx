@@ -53,6 +53,13 @@ export function BodyDiagramResult({ result }: { result: SimulateResponse }) {
   const activeValue = selected ?? candidates[0]?.value ?? null;
   const active = candidates.find((c) => c.value === activeValue);
 
+  const currentSegmentLabel = useMemo(() => {
+    const segment = result.segment_bounds.find(
+      (b) => timeIndex >= b.start_step && timeIndex < b.end_step
+    );
+    return segment?.label ?? null;
+  }, [result.segment_bounds, timeIndex]);
+
   if (!meta || !active) {
     return (
       <p className="text-sm" style={{ color: "var(--text-muted)" }}>
@@ -84,16 +91,13 @@ export function BodyDiagramResult({ result }: { result: SimulateResponse }) {
 
   return (
     <Card title="Ergebnis am Körper (Heatmap)">
-      <div className="mb-4 grid grid-cols-2 gap-4">
+      <div className="mb-4 max-w-sm">
         <SelectField
           label="Größe"
           value={active.value}
           options={candidates.map((c) => ({ value: c.value, label: c.label }))}
           onChange={setSelected}
         />
-        <div className="flex flex-col justify-end">
-          <ResultLegend min={active.diverging ? -absMax : min} max={active.diverging ? absMax : max} unit={active.unit} diverging={active.diverging} />
-        </div>
       </div>
       <div className="flex items-center gap-3">
         <button
@@ -111,6 +115,7 @@ export function BodyDiagramResult({ result }: { result: SimulateResponse }) {
             index={timeIndex}
             maxIndex={maxIndex}
             timeLabel={`${minutes.toFixed(0)} min`}
+            description={currentSegmentLabel}
             onChange={(i) => {
               setIsPlaying(false);
               setTimeIndex(i);
@@ -118,7 +123,13 @@ export function BodyDiagramResult({ result }: { result: SimulateResponse }) {
           />
         </div>
       </div>
-      <div className="mt-4 flex justify-center gap-8">
+      <div className="mt-4 flex items-stretch justify-center gap-8">
+        <ResultLegend
+          min={active.diverging ? -absMax : min}
+          max={active.diverging ? absMax : max}
+          unit={active.unit}
+          diverging={active.diverging}
+        />
         <BodyFront
           selectedRegions={[]}
           showLabels={false}

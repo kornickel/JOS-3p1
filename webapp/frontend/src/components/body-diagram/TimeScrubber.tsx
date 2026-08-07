@@ -4,17 +4,21 @@ export function TimeScrubber({
   index,
   maxIndex,
   timeLabel,
+  description,
   onChange,
 }: {
   index: number;
   maxIndex: number;
   timeLabel: string;
+  description?: string | null;
   onChange: (index: number) => void;
 }) {
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-baseline justify-between text-sm">
-        <span style={{ color: "var(--text-secondary)" }}>Zeitpunkt</span>
+        <span style={{ color: "var(--text-secondary)" }}>
+          Zeitpunkt{description ? `: ${description}` : ""}
+        </span>
         <span className="tabular-nums" style={{ color: "var(--text-primary)" }}>
           {timeLabel}
         </span>
