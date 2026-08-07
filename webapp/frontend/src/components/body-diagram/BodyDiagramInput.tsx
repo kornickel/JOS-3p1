@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import * as ToggleGroup from "@radix-ui/react-toggle-group";
 import type { BodyName } from "../../lib/jos3-types";
-import { regionHasDivergentOverride } from "../../lib/regionValues";
+import { regionHasDivergentOverride, useEffectiveRegionSnapshot } from "../../lib/regionValues";
 import { useScenarioStore } from "../../store/scenarioStore";
 import { BodyBack } from "./BodyBack";
 import { BodyFront } from "./BodyFront";
@@ -21,7 +21,10 @@ export function BodyDiagramInput() {
     ensureAtLeastOneSegment();
   }, [ensureAtLeastOneSegment]);
 
-  const segment = segments.find((s) => s.id === selectedSegmentId) ?? segments[0];
+  const rawIndex = segments.findIndex((s) => s.id === selectedSegmentId);
+  const index = rawIndex >= 0 ? rawIndex : 0;
+  const segment = segments[index];
+  const snapshot = useEffectiveRegionSnapshot(segments, index);
 
   if (!segment) {
     return (
@@ -33,7 +36,7 @@ export function BodyDiagramInput() {
 
   const getFill = (name: BodyName): string => {
     if (name === selectedRegion) return "color-mix(in srgb, var(--series-1) 25%, var(--surface-1))";
-    if (regionHasDivergentOverride(segment, name)) {
+    if (regionHasDivergentOverride(snapshot, name)) {
       return "color-mix(in srgb, var(--series-4) 30%, var(--surface-1))";
     }
     return "var(--surface-1)";
@@ -96,7 +99,7 @@ export function BodyDiagramInput() {
         </Card>
         <Card>
           {selectedRegion ? (
-            <RegionPanel segment={segment} region={selectedRegion} />
+            <RegionPanel segments={segments} index={index} region={selectedRegion} />
           ) : (
             <p className="text-sm" style={{ color: "var(--text-muted)" }}>
               Wähle links eine Körperregion aus, um ihre Parameter für das Segment „{segment.label}“ zu

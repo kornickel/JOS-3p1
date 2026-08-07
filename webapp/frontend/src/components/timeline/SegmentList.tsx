@@ -6,6 +6,7 @@ export function SegmentList() {
   const selectedSegmentId = useScenarioStore((s) => s.selectedSegmentId);
   const selectSegment = useScenarioStore((s) => s.selectSegment);
   const addSegment = useScenarioStore((s) => s.addSegment);
+  const duplicateSegment = useScenarioStore((s) => s.duplicateSegment);
   const removeSegment = useScenarioStore((s) => s.removeSegment);
   const moveSegment = useScenarioStore((s) => s.moveSegment);
 
@@ -57,6 +58,16 @@ export function SegmentList() {
                 aria-label="Nach unten verschieben"
               >
                 ↓
+              </button>
+              <button
+                type="button"
+                onClick={() => duplicateSegment(seg.id)}
+                className="px-1 text-xs"
+                style={{ color: "var(--text-secondary)" }}
+                aria-label="Segment duplizieren"
+                title="Segment duplizieren"
+              >
+                ⧉
               </button>
               <button
                 type="button"

@@ -69,7 +69,9 @@ export interface RegionOverrides {
 export interface GlobalOverrides {
   PAR?: number;
   posture?: "standing" | "sitting" | "lying";
-  options?: Record<string, boolean | number>;
+  // A key set to `undefined` means "explicitly cleared, inherit instead" --
+  // same convention as RegionOverrides fields (see clearRegionFieldForBody).
+  options?: Record<string, boolean | number | undefined>;
 }
 
 export interface Segment {

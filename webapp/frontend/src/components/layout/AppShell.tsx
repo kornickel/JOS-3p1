@@ -8,7 +8,17 @@ export interface TabDef {
   content: ReactNode;
 }
 
-export function AppShell({ title, tabs }: { title: string; tabs: TabDef[] }) {
+export function AppShell({
+  title,
+  tabs,
+  activeTab,
+  onActiveTabChange,
+}: {
+  title: string;
+  tabs: TabDef[];
+  activeTab: string;
+  onActiveTabChange: (value: string) => void;
+}) {
   return (
     <div className="min-h-screen">
       <header
@@ -20,7 +30,7 @@ export function AppShell({ title, tabs }: { title: string; tabs: TabDef[] }) {
         </h1>
         <ScenarioBar />
       </header>
-      <Tabs.Root defaultValue={tabs[0]?.value} className="flex flex-col">
+      <Tabs.Root value={activeTab} onValueChange={onActiveTabChange} className="flex flex-col">
         <Tabs.List
           className="flex gap-1 border-b px-6"
           style={{ borderColor: "var(--gridline)", background: "var(--surface-1)" }}

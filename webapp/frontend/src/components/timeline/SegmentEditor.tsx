@@ -1,4 +1,13 @@
 import { useMeta } from "../../lib/api";
+import {
+  computeEffectiveOptions,
+  computeEffectivePAR,
+  computeEffectivePosture,
+  findLastExplicitGlobalSegment,
+  findLastExplicitOptionSegment,
+  isGlobalFieldExplicitAt,
+  isOptionExplicitAt,
+} from "../../lib/globalValues";
 import type { Segment } from "../../lib/jos3-types";
 import { useScenarioStore } from "../../store/scenarioStore";
 import { Card } from "../common/Card";
@@ -6,16 +15,30 @@ import { NumberField } from "../common/NumberField";
 import { SelectField } from "../common/SelectField";
 import { Slider } from "../common/Slider";
 
-export function SegmentEditor({ segment }: { segment: Segment }) {
+function ProvenanceHint({ explicit, segmentIndex }: { explicit: boolean; segmentIndex: number | null }) {
+  return (
+    <span className="text-xs" style={{ color: explicit ? "var(--text-secondary)" : "var(--text-muted)" }}>
+      {explicit ? "gesetzt in diesem Segment" : segmentIndex !== null ? `geerbt von Segment ${segmentIndex + 1}` : "geerbt (Modell-Standard)"}
+    </span>
+  );
+}
+
+export function SegmentEditor({ segments, index }: { segments: Segment[]; index: number }) {
   const { data: meta } = useMeta();
   const updateSegmentMeta = useScenarioStore((s) => s.updateSegmentMeta);
   const updateSegmentGlobals = useScenarioStore((s) => s.updateSegmentGlobals);
+  const selectSegment = useScenarioStore((s) => s.selectSegment);
+  const setActiveTab = useScenarioStore((s) => s.setActiveTab);
+  const segment = segments[index];
 
-  if (!meta) return null;
+  if (!meta || !segment) return null;
 
   const minutes = (segment.times * segment.dtime) / 60;
-  const par = segment.globals.PAR ?? 1.25;
-  const posture = segment.globals.posture ?? "standing";
+  const par = computeEffectivePAR(segments, index);
+  const posture = computeEffectivePosture(segments, index);
+  const options = computeEffectiveOptions(segments, index, meta.options);
+  const parExplicit = isGlobalFieldExplicitAt(segment, "PAR");
+  const postureExplicit = isGlobalFieldExplicitAt(segment, "posture");
 
   return (
     <Card title={`Segment bearbeiten: ${segment.label}`}>
@@ -49,21 +72,59 @@ export function SegmentEditor({ segment }: { segment: Segment }) {
           onChange={(dtime) => updateSegmentMeta(segment.id, { dtime, times: Math.max(1, Math.round(minutes * 60 / dtime)) })}
         />
         <div className="col-span-2">
-          <Slider
-            label="Aktivitätsverhältnis (PAR)"
-            value={par}
-            min={meta.input_params.PAR.min}
-            max={meta.input_params.PAR.max}
-            step={meta.input_params.PAR.step}
-            onChange={(PAR) => updateSegmentGlobals(segment.id, { PAR })}
-          />
+          <div className="flex items-end gap-2">
+            <div className="flex-1">
+              <Slider
+                label="Aktivitätsverhältnis (PAR)"
+                value={par}
+                min={meta.input_params.PAR.min}
+                max={meta.input_params.PAR.max}
+                step={meta.input_params.PAR.step}
+                onChange={(PAR) => updateSegmentGlobals(segment.id, { PAR })}
+              />
+              <ProvenanceHint
+                explicit={parExplicit}
+                segmentIndex={findLastExplicitGlobalSegment(segments, index, "PAR")}
+              />
+            </div>
+            {parExplicit && (
+              <button
+                type="button"
+                onClick={() => updateSegmentGlobals(segment.id, { PAR: undefined })}
+                className="mb-1.5 shrink-0 rounded border px-2 py-1 text-xs"
+                style={{ borderColor: "var(--gridline)", color: "var(--text-secondary)" }}
+                title="Auf vererbten Wert zurücksetzen"
+              >
+                ↺
+              </button>
+            )}
+          </div>
         </div>
-        <SelectField
-          label="Körperhaltung"
-          value={posture}
-          options={meta.enums.posture}
-          onChange={(value) => updateSegmentGlobals(segment.id, { posture: value as typeof posture })}
-        />
+        <div>
+          <SelectField
+            label="Körperhaltung"
+            value={posture}
+            options={meta.enums.posture}
+            onChange={(value) => updateSegmentGlobals(segment.id, { posture: value as typeof posture })}
+          />
+          <div className="mt-1 flex items-center gap-2">
+            <ProvenanceHint
+              explicit={postureExplicit}
+              segmentIndex={findLastExplicitGlobalSegment(segments, index, "posture")}
+            />
+            {postureExplicit && (
+              <button
+                type="button"
+                onClick={() => updateSegmentGlobals(segment.id, { posture: undefined })}
+                className="rounded border px-1.5 py-0.5 text-xs"
+                style={{ borderColor: "var(--gridline)", color: "var(--text-secondary)" }}
+                title="Auf vererbten Wert zurücksetzen"
+              >
+                ↺
+              </button>
+            )}
+          </div>
+        </div>
       </div>
 
       <h4 className="mt-5 mb-2 text-sm font-medium" style={{ color: "var(--text-secondary)" }}>
@@ -71,28 +132,67 @@ export function SegmentEditor({ segment }: { segment: Segment }) {
       </h4>
       <div className="grid grid-cols-2 gap-2">
         {Object.entries(meta.options).map(([key, optMeta]) => {
-          const checked = Boolean(segment.globals.options?.[key] ?? optMeta.default);
+          const checked = Boolean(options[key]);
+          const explicit = isOptionExplicitAt(segment, key);
           return (
-            <label key={key} className="flex items-center gap-2 text-sm" style={{ color: "var(--text-primary)" }}>
-              <input
-                type="checkbox"
-                checked={checked}
-                onChange={(e) =>
-                  updateSegmentGlobals(segment.id, {
-                    options: { ...segment.globals.options, [key]: e.target.checked },
-                  })
-                }
-              />
-              {optMeta.label}
-            </label>
+            <div key={key} className="flex items-center gap-1.5 text-sm" style={{ color: "var(--text-primary)" }}>
+              <label className="flex flex-1 items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={(e) =>
+                    updateSegmentGlobals(segment.id, {
+                      options: { ...segment.globals.options, [key]: e.target.checked },
+                    })
+                  }
+                />
+                {optMeta.label}
+                {!explicit && (
+                  <span
+                    className="text-xs"
+                    style={{ color: "var(--text-muted)" }}
+                    title={
+                      (() => {
+                        const provenance = findLastExplicitOptionSegment(segments, index, key);
+                        return provenance !== null
+                          ? `geerbt von Segment ${provenance + 1}`
+                          : "geerbt (Modell-Standard)";
+                      })()
+                    }
+                  >
+                    (geerbt)
+                  </span>
+                )}
+              </label>
+              {explicit && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    updateSegmentGlobals(segment.id, { options: { ...segment.globals.options, [key]: undefined } })
+                  }
+                  className="rounded border px-1.5 py-0.5 text-xs"
+                  style={{ borderColor: "var(--gridline)", color: "var(--text-secondary)" }}
+                  title="Auf vererbten Wert zurücksetzen"
+                >
+                  ↺
+                </button>
+              )}
+            </div>
           );
         })}
       </div>
 
-      <p className="mt-4 text-xs" style={{ color: "var(--text-muted)" }}>
-        Wetter- und Bekleidungsparameter pro Körperregion werden im Tab „Körper & Kleidung“ für dieses
-        Segment festgelegt.
-      </p>
+      <button
+        type="button"
+        onClick={() => {
+          selectSegment(segment.id);
+          setActiveTab("body");
+        }}
+        className="mt-4 text-sm font-medium"
+        style={{ color: "var(--series-1)" }}
+      >
+        Kleidung &amp; Wetter für dieses Segment bearbeiten →
+      </button>
     </Card>
   );
 }
