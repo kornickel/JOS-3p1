@@ -15,6 +15,7 @@ import { Card } from "../common/Card";
 import { NumberField } from "../common/NumberField";
 import { SelectField } from "../common/SelectField";
 import { Slider } from "../common/Slider";
+import { ParCalculator } from "./ParCalculator";
 
 function ProvenanceHint({ explicit, segmentIndex }: { explicit: boolean; segmentIndex: number | null }) {
   const t = useT();
@@ -105,6 +106,7 @@ export function SegmentEditor({ segments, index }: { segments: Segment[]; index:
               </button>
             )}
           </div>
+          <ParCalculator segment={segment} effectivePar={par} />
         </div>
         <div>
           <SelectField

@@ -5,6 +5,7 @@ import { useT } from "../lib/i18n";
 import { useScenarioStore } from "../store/scenarioStore";
 import { BodyDiagramResult } from "../components/body-diagram/BodyDiagramResult";
 import { ResultsCharts } from "../components/results/ResultsCharts";
+import { StrainOverview } from "../components/results/StrainOverview";
 import { Card } from "../components/common/Card";
 
 export function ResultsView() {
@@ -85,6 +86,7 @@ export function ResultsView() {
       </Card>
       {lastResult && (
         <div ref={exportRef} className="flex flex-col gap-4">
+          <StrainOverview result={lastResult} />
           <BodyDiagramResult result={lastResult} />
           <ResultsCharts result={lastResult} />
         </div>

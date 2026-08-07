@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
-from jos3 import JOS3
+from jos3 import JOS3, comfort_zhang
 from jos3.matrix import BODY_NAMES
 
 from .schemas import ModelConfig, Segment, ScenarioSpec
@@ -140,8 +140,48 @@ def run_scenario(spec: ScenarioSpec) -> Tuple[JOS3, Dict[str, list], List[dict]]
             results[f"{key}{body_name}"] = [float(snap[key][i]) for snap in extra_series]
         results[f"{key}Mean"] = [float(snap[key].mean()) for snap in extra_series]
 
+    results.update(_comfort_columns(model, results))
+
     _cache_last_run(spec, model)
     return model, results, segment_bounds
+
+
+def _comfort_columns(model: JOS3, results: Dict[str, list]) -> Dict[str, list]:
+    """Zhang sensation/comfort, appended as ordinary result columns.
+
+    Runs after the simulation loop rather than inside it because the model's
+    dynamic term needs dTsk/dt and dTcr/dt, i.e. neighbouring steps -- that
+    does not fit the per-step snapshot mechanism above.
+
+    `model.setpt_sk` is used as the local neutral reference. JOS-3 computes it
+    in `_reset_setpt()` by equilibrating in a PMV=0 environment, so it is
+    already the per-segment neutral skin distribution Zhang's model expects
+    (33.9-35.8 C here, not a flat 34).
+    """
+    try:
+        tsk_series = [results[f"Tsk{b}"] for b in BODY_NAMES]
+    except KeyError:
+        # Tsk is a default output, but stay defensive: no comfort columns is
+        # better than a 500.
+        return {}
+
+    n_steps = len(tsk_series[0])
+    tsk = [[float(tsk_series[j][i]) for j in range(len(BODY_NAMES))] for i in range(n_steps)]
+
+    # Central blood temperature is the better whole-body core signal; chest
+    # core is the fallback the rest of the app already treats as "the" core.
+    core = results.get("Tcb") or results.get("TcrChest")
+    core_series = [float(v) for v in core] if core else [37.0] * n_steps
+
+    dtimes = [float(v) for v in results["dt"]] if "dt" in results else None
+
+    return comfort_zhang.evaluate_series(
+        tsk=tsk,
+        tsk_set=[float(v) for v in model.setpt_sk],
+        tcr_mean=core_series,
+        body_names=list(BODY_NAMES),
+        dtimes=dtimes,
+    )
 
 
 def preview_model(config: ModelConfig) -> dict:

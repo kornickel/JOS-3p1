@@ -73,6 +73,22 @@ class GlobalOverrides(BaseModel):
     options: Optional[Dict[str, Union[bool, float]]] = None
 
 
+class ActivityInput(BaseModel):
+    """The walking data the frontend's PAR calculator derived `globals.PAR`
+    from (see webapp/frontend/src/lib/parModel.ts).
+
+    Documentation only: `jos3_bridge` never reads this block -- `globals.PAR`
+    stays the single value that drives the simulation. Persisting the inputs
+    just means reopening a scenario shows how a PAR was arrived at, and
+    "4.0 -> 4.5 km/h" is one edit rather than a re-derivation.
+    """
+
+    speed_kmh: float = Field(ge=0)
+    grade_pct: float = Field(ge=-45, le=45)
+    load_kg: float = Field(ge=0)
+    terrain: Literal["paved", "dirt_road", "trail", "rough_trail", "scree"]
+
+
 class Segment(BaseModel):
     id: str
     label: str
@@ -80,6 +96,7 @@ class Segment(BaseModel):
     times: int = Field(gt=0)
     globals: GlobalOverrides = Field(default_factory=GlobalOverrides)
     regions: RegionOverrides = Field(default_factory=RegionOverrides)
+    activity: Optional[ActivityInput] = None
 
 
 class ScenarioSpec(BaseModel):

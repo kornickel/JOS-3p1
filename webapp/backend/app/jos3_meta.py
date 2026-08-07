@@ -25,7 +25,13 @@ INPUT_PARAMS = {
     "Icl_waterabs": {"unit": "-", "label": "Schweißaufnahme der Kleidung", "min": 0.0, "max": 1.0, "step": 0.01},
     "release_tau": {"unit": "s", "label": "Trocknungszeitkonstante", "min": 1.0, "max": 36000.0, "step": 10.0},
     "max_storage": {"unit": "g", "label": "Maximale Wasserspeicherkapazität", "min": 0.001, "max": 2000.0, "step": 1.0},
-    "PAR": {"unit": "-", "label": "Aktivitätsverhältnis (PAR)", "min": 0.8, "max": 8.0, "step": 0.05},
+    # max was 8.0, which cannot represent real mountain terrain: PAR is a
+    # multiple of BMR, not MET (BMR ~= 0.77 MET), so brisk loaded hiking at
+    # 12 % grade is already PAR ~8.3 and a steep ridge ascent exceeds 12.
+    # See webapp/frontend/src/lib/parModel.ts for the conversion. Note that
+    # PAR above ~10 (~7.7 MET) is not sustainable for hours -- the model
+    # scales metabolism linearly and will not object.
+    "PAR": {"unit": "-", "label": "Aktivitätsverhältnis (PAR)", "min": 0.8, "max": 15.0, "step": 0.05},
     "setpt_cr": {"unit": "°C", "label": "Sollwert Körperkerntemperatur", "min": 30.0, "max": 42.0, "step": 0.1},
     "setpt_sk": {"unit": "°C", "label": "Sollwert Hauttemperatur", "min": 20.0, "max": 40.0, "step": 0.1},
 }
@@ -145,6 +151,35 @@ EXTRA_OUTPUT_PARAMS = {
         "meaning": "Mean maximum water storage capacity of the clothing across the whole body",
         "suffix": None,
         "unit": "g",
+    },
+    # Zhang sensation/comfort (src/jos3/comfort_zhang.py), appended to the
+    # results by jos3_bridge. Both scales run -4..+4: sensation from cold to
+    # hot, comfort from very uncomfortable to very comfortable. Declaring the
+    # local ones with suffix "Body name" is what makes them show up in the
+    # heatmap's quantity dropdown automatically.
+    "SensationLocal": {
+        "ex_output": True,
+        "meaning": "Thermal sensation of the body part (-4 cold .. +4 hot)",
+        "suffix": "Body name",
+        "unit": "-",
+    },
+    "ComfortLocal": {
+        "ex_output": True,
+        "meaning": "Thermal comfort of the body part (-4 very uncomfortable .. +4 very comfortable)",
+        "suffix": "Body name",
+        "unit": "-",
+    },
+    "SensationOverall": {
+        "ex_output": True,
+        "meaning": "Whole-body thermal sensation (-4 cold .. +4 hot)",
+        "suffix": None,
+        "unit": "-",
+    },
+    "ComfortOverall": {
+        "ex_output": True,
+        "meaning": "Whole-body thermal comfort (-4 very uncomfortable .. +4 very comfortable)",
+        "suffix": None,
+        "unit": "-",
     },
 }
 

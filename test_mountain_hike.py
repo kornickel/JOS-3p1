@@ -127,7 +127,7 @@ log.append(run(5, "Start: trailhead, getting dressed"))
 # hiking pace). Clothing still unchanged -> heat build-up/sweating should
 # set in.
 mod.Ta = 9; mod.Tr = 9; mod.RH = 68; mod.Va = 0.3
-mod.PAR = 4.0
+mod.PAR = 6.07
 log.append(run(35, "Ascent on forest trail, warmly dressed"))
 
 # ---------------------------------------------------------------------------
@@ -147,7 +147,7 @@ log.append(run(5, "Break: softshell removed"))
 # D) 45-100 min: Continuing uphill, forest thinning out toward the tree line
 # ---------------------------------------------------------------------------
 mod.Ta = 10; mod.Tr = 11; mod.RH = 65; mod.Va = 0.5
-mod.PAR = 4.3
+mod.PAR = 6.91
 log.append(run(55, "Ascent toward the tree line"))
 
 # ---------------------------------------------------------------------------
@@ -167,7 +167,7 @@ log.append(run(10, "Water break at the tree line, wind picking up"))
 # (airperm 0.15), but less breathable than the softshell. Tr > Ta due to
 # direct solar radiation on the open ridge despite cold air.
 mod.Ta = 5; mod.Tr = 13; mod.RH = 55; mod.Va = 3.5
-mod.posture = "standing"; mod.PAR = 5.5
+mod.posture = "standing"; mod.PAR = 9.20
 mod.Icl = 1.1
 mod.Icl_airperm = 0.15
 mod.Icl_evap_eff = 0.35
@@ -203,7 +203,7 @@ log.append(run(15, "Summit break, lunch in the wind"))
 # Insulated jacket off again (moving generates heat again), back to the
 # windbreaker. The sun disappears behind clouds -> Tr = Ta.
 mod.Ta = 3; mod.Tr = 3; mod.RH = 75; mod.Va = 3.0
-mod.posture = "standing"; mod.PAR = 3.8
+mod.posture = "standing"; mod.PAR = 2.70
 mod.Icl = 1.1
 mod.Icl_airperm = 0.15
 mod.Icl_evap_eff = 0.35
@@ -222,7 +222,7 @@ log.append(run(25, "Descent begins, clouds moving in"))
 # Exercises the balance bug fixed earlier (fix 3a): the moisture should
 # stay in storage instead of draining away.
 mod.Ta = 6; mod.Tr = 6; mod.RH = 95; mod.Va = 2.5
-mod.PAR = 3.6
+mod.PAR = 2.52
 mod.Icl = 1.0
 mod.Icl_airperm = 0.05
 mod.Icl_evap_eff = 0.15
@@ -248,14 +248,14 @@ log.append(run(15, "Break: rain jacket off, rain easing"))
 # J1) 275-305 min: Descent through the forest, getting warmer
 # ---------------------------------------------------------------------------
 mod.Ta = 11; mod.Tr = 11; mod.RH = 70; mod.Va = 0.5
-mod.PAR = 3.2
+mod.PAR = 2.61
 log.append(run(30, "Descent on forest trail, conditions milder"))
 
 # ---------------------------------------------------------------------------
 # J2) 305-345 min: Fleece off, down to base layer + thin windbreaker
 # ---------------------------------------------------------------------------
 mod.Ta = 13; mod.Tr = 13; mod.RH = 60; mod.Va = 0.4
-mod.PAR = 3.0
+mod.PAR = 3.04
 mod.Icl = 0.55
 mod.Icl_airperm = 0.6
 mod.Icl_evap_eff = 0.50
@@ -291,11 +291,18 @@ checks.append(("No NaN/Inf in core variables",
                np.isfinite(tcr).all() and np.isfinite(tsk).all()
                and np.isfinite(wet).all() and np.isfinite(store).all()))
 
-checks.append(("Core temperature (chest) within the physiologically plausible range 36.0-39.0 C",
-               bool(np.all((tcr >= 36.0) & (tcr <= 39.0)))))
+# Upper bounds were 39.0 / 38.0 until the PAR values were corrected (they had
+# been set as if PAR were MET; PAR is a multiple of BASAL rate, so the ascents
+# described roughly half the heat they should -- see the header of
+# webapp/backend/app/example_scenarios.py). With the corrected load the ridge
+# ascent peaks at Tcr 39.49 C / TskMean 38.82 C: real heat strain, because at
+# PAR 9.2 behind a softshell with evap_eff 0.35 the skin saturates and the
+# heat balance can no longer close.
+checks.append(("Core temperature (chest) within the physiologically plausible range 36.0-40.0 C",
+               bool(np.all((tcr >= 36.0) & (tcr <= 40.0)))))
 
-checks.append(("Skin temperature within the plausible range 20-38 C",
-               bool(np.all((tsk >= 20.0) & (tsk <= 38.0)))))
+checks.append(("Skin temperature within the plausible range 20-39.5 C",
+               bool(np.all((tsk >= 20.0) & (tsk <= 39.5)))))
 
 checks.append(("Skin wettedness (Wet) within the valid range [0,1]",
                bool(np.all((wet >= 0.0) & (wet <= 1.0)))))
@@ -325,24 +332,29 @@ checks.append(("Skin wettedness stays strongly elevated at the summit despite PA
 checks.append(("Cooling (Tsk drops) during the summit break despite the thicker jacket",
                bool(log[7]["tsk"] < log[6]["tsk"])))
 
-# Expectation: during sustained rain (H2, index 9), clothing water storage
-# builds up relative to before (H1, index 8) instead of draining away
-# (release_tau very long, high RH -> fix 3a: storage is no longer emptied
-# in violation of the mass balance when there is barely any evaporative
-# capacity available).
-checks.append(("Clothing water storage grows during the rain segment (H2) vs. before (H1)",
-               bool(log[9]["store"] >= log[8]["store"])))
+# Expectation: during sustained rain (H2, index 9) there is next to no
+# evaporative capacity (RH 95 %, release_tau very long), so the water held in
+# the clothing must stay put rather than draining away in violation of the
+# mass balance -- that is what fix 3a addressed. It holds to within ~1 % and
+# even rises mid-segment, while the dry run-out afterwards clears ~80 % of it.
+# This was "grows" (store[9] >= store[8]) until the descent PAR values were
+# corrected downwards; descending simply does not produce much sweat, so
+# "holds" is the claim that actually reflects the physics.
+checks.append(("Clothing water storage holds through the rain segment (H2), no draining",
+               bool(abs(log[9]["store"] - log[8]["store"]) < 0.10 * log[8]["store"])))
 
 # Expectation: by the end of the hike (warm, dry conditions, thin
-# clothing), clothing water storage should have dropped again well below
-# the rain-segment maximum (H2, index 9).
-checks.append(("Clothing water storage decreases again toward the end of the hike",
-               bool(log[-1]["store"] < log[9]["store"])))
+# clothing), clothing water storage should have dropped well below the
+# rain-segment level (H2, index 9).
+checks.append(("Clothing water storage dries out substantially toward the end of the hike",
+               bool(log[-1]["store"] < 0.5 * log[9]["store"])))
 
-# Expectation: core temperature overall stays within a fairly tight
-# window (no thermal runaway despite strongly varying conditions).
-checks.append(("Core temperature variation over the whole hike < 2.0 C (no runaway)",
-               bool((tcr.max() - tcr.min()) < 2.0)))
+# Expectation: core temperature stays in a bounded window -- no runaway. The
+# span was < 2.0 C while the ascents were underloaded; with the corrected PAR
+# the ridge ascent alone lifts Tcr from ~37.3 to 39.5 C, so the honest bound
+# is ~3 C. Anything beyond that would mean the balance never re-closes.
+checks.append(("Core temperature variation over the whole hike < 3.0 C (no runaway)",
+               bool((tcr.max() - tcr.min()) < 3.0)))
 
 all_ok = True
 for desc, ok in checks:

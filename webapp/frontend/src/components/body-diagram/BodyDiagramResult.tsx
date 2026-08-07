@@ -6,13 +6,17 @@ import { useT } from "../../lib/i18n";
 import type { BodyName, SimulateResponse } from "../../lib/jos3-types";
 import { useLanguageStore } from "../../store/languageStore";
 import { Card } from "../common/Card";
+import { ComfortStatus } from "../results/ComfortStatus";
 import { SelectField } from "../common/SelectField";
 import { BodyBack } from "./BodyBack";
 import { BodyFront } from "./BodyFront";
 import { ResultLegend } from "./ResultLegend";
 import { TimeScrubber } from "./TimeScrubber";
 
+// Derived per-region quantities: not columns in the API response, computed
+// on the fly from ones that are.
 const TSK_DEVIATION = "__tsk_deviation__";
+const CLOTHING_SATURATION = "__clothing_saturation__";
 
 export function BodyDiagramResult({ result }: { result: SimulateResponse }) {
   const t = useT();
@@ -23,11 +27,18 @@ export function BodyDiagramResult({ result }: { result: SimulateResponse }) {
 
   const candidates = useMemo(() => {
     if (!meta) return [];
-    const opts: { value: string; label: string; unit: string; diverging: boolean }[] = [];
+    const opts: { value: string; label: string; unit: string; diverging: boolean; invert?: boolean }[] = [];
     for (const [name, paramMeta] of Object.entries(meta.output_params)) {
       if (paramMeta.suffix !== "Body name") continue;
       if (!(`${name}Head` in results)) continue;
-      opts.push({ value: name, label: paramMeta.meaning, unit: paramMeta.unit, diverging: false });
+      // Zhang's scales are signed around a meaningful zero (neutral sensation
+      // / the comfort saddle), so they belong on the diverging ramp -- the
+      // same one the skin-temperature deviation already uses.
+      const diverging = name === "SensationLocal" || name === "ComfortLocal";
+      // Comfort is inverted so that DIScomfort gets the alarm colour: on the
+      // raw scale +4 is pleasant, which would otherwise come out red.
+      const invert = name === "ComfortLocal";
+      opts.push({ value: name, label: paramMeta.meaning, unit: paramMeta.unit, diverging, invert });
     }
     if ("TskHead" in results && "SetptskHead" in results) {
       opts.push({
@@ -35,6 +46,14 @@ export function BodyDiagramResult({ result }: { result: SimulateResponse }) {
         label: t.bodyDiagramResult.tskDeviationLabel,
         unit: "°C",
         diverging: true,
+      });
+    }
+    if ("WaterStorageHead" in results && "max_storageHead" in results) {
+      opts.push({
+        value: CLOTHING_SATURATION,
+        label: t.bodyDiagramResult.saturationLabel,
+        unit: "-",
+        diverging: false,
       });
     }
     opts.sort((a, b) => a.label.localeCompare(b.label));
@@ -76,6 +95,10 @@ export function BodyDiagramResult({ result }: { result: SimulateResponse }) {
     if (active.value === TSK_DEVIATION) {
       return (results[`Tsk${bodyName}`][timeIdx] as number) - (results[`Setptsk${bodyName}`][timeIdx] as number);
     }
+    if (active.value === CLOTHING_SATURATION) {
+      const cap = results[`max_storage${bodyName}`][timeIdx] as number;
+      return cap > 0 ? (results[`WaterStorage${bodyName}`][timeIdx] as number) / cap : 0;
+    }
     return results[`${active.value}${bodyName}`][timeIdx] as number;
   };
 
@@ -86,7 +109,7 @@ export function BodyDiagramResult({ result }: { result: SimulateResponse }) {
 
   const getFill = (bodyName: BodyName): string => {
     const v = valueAt(bodyName, timeIndex);
-    if (active.diverging) return divergingColor(v / absMax);
+    if (active.diverging) return divergingColor((active.invert ? -v : v) / absMax);
     const ratio = max > min ? (v - min) / (max - min) : 0.5;
     return sequentialColor(ratio);
   };
@@ -127,10 +150,15 @@ export function BodyDiagramResult({ result }: { result: SimulateResponse }) {
           />
         </div>
       </div>
+      <div className="mt-2 border-t pt-2" style={{ borderColor: "var(--gridline)" }}>
+        <ComfortStatus result={result} timeIndex={timeIndex} />
+      </div>
       <div className="mt-4 flex items-stretch justify-center gap-8">
+        {/* When the ramp is inverted the tick labels have to run the other
+            way too, so the red end stays the one labelled "uncomfortable". */}
         <ResultLegend
-          min={active.diverging ? -absMax : min}
-          max={active.diverging ? absMax : max}
+          min={active.diverging ? (active.invert ? absMax : -absMax) : min}
+          max={active.diverging ? (active.invert ? -absMax : absMax) : max}
           unit={active.unit}
           diverging={active.diverging}
         />

@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type {
+  ActivityInput,
   BodyName,
   GlobalOverrides,
   ModelConfig,
@@ -42,11 +43,15 @@ function stripNulls<T extends object>(obj: T): T {
 
 function sanitizeSegment(segment: Segment): Segment {
   const globals = stripNulls(segment.globals);
-  return {
+  const clean: Segment = {
     ...segment,
     regions: stripNulls(segment.regions),
     globals: globals.options ? { ...globals, options: stripNulls(globals.options) } : globals,
   };
+  // Same "absent, not null" convention as above -- an externally written
+  // spec may carry `activity: null` for a segment that never had one.
+  if (clean.activity == null) delete clean.activity;
+  return clean;
 }
 
 function sanitizeScenarioSpec(spec: ScenarioSpec): ScenarioSpec {
@@ -78,6 +83,7 @@ interface ScenarioState {
   duplicateSegment: (id: string) => void;
   removeSegment: (id: string) => void;
   updateSegmentMeta: (id: string, patch: Partial<Pick<Segment, "label" | "dtime" | "times">>) => void;
+  updateSegmentActivity: (id: string, activity: ActivityInput | undefined) => void;
   updateSegmentGlobals: (id: string, patch: GlobalOverrides) => void;
   updateSegmentRegions: (id: string, patch: RegionOverrides) => void;
   moveSegment: (id: string, direction: "up" | "down") => void;
@@ -125,6 +131,7 @@ export const useScenarioStore = create<ScenarioState>((set, get) => ({
         ...original,
         id: newSegmentId(),
         label: currentDictionary().scenarioStore.copySuffix(original.label),
+        activity: original.activity ? { ...original.activity } : undefined,
         globals: {
           ...original.globals,
           options: original.globals.options ? { ...original.globals.options } : undefined,
@@ -151,6 +158,11 @@ export const useScenarioStore = create<ScenarioState>((set, get) => ({
   updateSegmentMeta: (id, patch) =>
     set((state) => ({
       segments: state.segments.map((s) => (s.id === id ? { ...s, ...patch } : s)),
+    })),
+
+  updateSegmentActivity: (id, activity) =>
+    set((state) => ({
+      segments: state.segments.map((s) => (s.id === id ? { ...s, activity } : s)),
     })),
 
   updateSegmentGlobals: (id, patch) =>

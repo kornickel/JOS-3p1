@@ -100,8 +100,16 @@ def test_mountain_hike_plausibility(client):
     store = [at_segment_end("WaterStorageMean", i) for i in range(14)]
 
     assert all(math.isfinite(v) for v in tcr + tsk + wet + store)
-    assert all(36.0 <= v <= 39.0 for v in tcr)
-    assert all(20.0 <= v <= 38.0 for v in tsk)
+    # Upper bounds were 39.0 / 38.0 before the PAR values were corrected (see
+    # app/example_scenarios.py): the ascents used to describe roughly half the
+    # metabolic heat they should. With the corrected load the ridge segment (F)
+    # peaks at Tcr 39.49 C and TskMean 38.82 C. That is real heat strain rather
+    # than a modelling artefact -- at PAR 9.2 behind a softshell with
+    # evap_eff 0.35 the skin saturates (WetMean hits 1.0) and the heat balance
+    # can no longer close. Bounds widened to match, deliberately not so far
+    # that a genuine runaway would slip through.
+    assert all(36.0 <= v <= 40.0 for v in tcr)
+    assert all(20.0 <= v <= 39.5 for v in tsk)
     assert all(0.0 <= v <= 1.0 for v in wet)
     assert all(v >= 0.0 for v in store)
 
@@ -109,5 +117,21 @@ def test_mountain_hike_plausibility(client):
     assert wet[5] > wet[0], "wettedness should rise during the steep ridge ascent (F) vs. start (A)"
     assert wet[7] > 0.3, "wettedness should stay elevated at the summit break (G2)"
     assert tsk[7] < tsk[6], "TskMean should keep dropping during the summit break despite the thicker jacket"
-    assert store[9] >= store[8], "clothing water storage should grow during the rain (H2) vs. before (H1)"
-    assert store[13] < store[9], "clothing water storage should drop again by the end of the hike vs. the rain peak (H2)"
+    # Rain (H2) at RH 95 % leaves almost no evaporative capacity, so the water
+    # held in the clothing must stay put instead of draining away in violation
+    # of the mass balance -- that is the behaviour fix 3a introduced. It moves
+    # by ~1 % end to end and even rises mid-segment (6.46 -> 6.63 g), whereas
+    # the dry, warm run-out afterwards clears ~80 % of it.
+    #
+    # This used to be `store[9] >= store[8]`, which only held while the descent
+    # PAR values were overstated (3.6-3.8 rather than the ~2.5-2.7 a descent
+    # actually costs, see app/example_scenarios.py) and the hiker was still
+    # sweating hard in the rain. Descending simply does not produce much sweat,
+    # so "grows" was never the right claim -- "holds" is.
+    assert abs(store[9] - store[8]) < 0.10 * store[8], (
+        "clothing water storage should hold through the rain (H2), not drain"
+    )
+    # Subsumes the previous, weaker `store[13] < store[9]`.
+    assert store[13] < 0.5 * store[9], (
+        "and should dry out substantially once conditions turn warm and dry"
+    )

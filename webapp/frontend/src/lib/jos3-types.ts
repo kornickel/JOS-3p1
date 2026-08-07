@@ -74,6 +74,16 @@ export interface GlobalOverrides {
   options?: Record<string, boolean | number | undefined>;
 }
 
+/** Walking data the PAR calculator derived `globals.PAR` from. Documentation
+ * only -- the backend never reads it, `globals.PAR` drives the simulation.
+ * Mirrors schemas.py::ActivityInput. */
+export interface ActivityInput {
+  speed_kmh: number;
+  grade_pct: number;
+  load_kg: number;
+  terrain: "paved" | "dirt_road" | "trail" | "rough_trail" | "scree";
+}
+
 export interface Segment {
   id: string;
   label: string;
@@ -81,6 +91,7 @@ export interface Segment {
   times: number;
   globals: GlobalOverrides;
   regions: RegionOverrides;
+  activity?: ActivityInput;
 }
 
 export interface ScenarioSpec {

@@ -4,3 +4,9 @@
 - Übersetzung tatsächliche Anstrengung (aus Laufgeschwindigkeit und Steigung bzw. Komplexität?) in PAR
 
 Langfristiges Ziel: Optimierer. Pfad ist vorgegeben und das optimale Bekleidungssystem soll ermittelt werden - Zielgrößen: Gewicht, Komfort, etc.
+
+
+
+---
+
+

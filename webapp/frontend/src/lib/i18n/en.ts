@@ -56,6 +56,7 @@ export const en = {
   },
   bodyDiagramResult: {
     tskDeviationLabel: "Skin temperature: deviation from setpoint",
+    saturationLabel: "Clothing moisture saturation (share of capacity)",
     noPerRegionData: "No per-region result values available.",
     cardTitle: "Result on the body (heatmap)",
     quantityLabel: "Quantity",
@@ -107,6 +108,26 @@ export const en = {
     posture: "Posture",
     optionsSummary: (count: number) => `Thermoregulation options (${count} active)`,
   },
+  parCalculator: {
+    summary: "Derive PAR from walking data",
+    speed: "Speed",
+    grade: "Grade",
+    load: "Pack load",
+    terrain: "Terrain",
+    terrainOptions: {
+      paved: "Paved road",
+      dirt_road: "Dirt/forest road",
+      trail: "Trail",
+      rough_trail: "Rough, rocky trail",
+      scree: "Scree, loose ground",
+    },
+    preview: (par: string, met: string, watts: string) => `→ PAR ${par}  (${met} MET, ${watts} W)`,
+    apply: "Apply as PAR",
+    outOfSync: (activityPar: string, currentPar: string) =>
+      `These inputs give PAR ${activityPar}, but the segment currently uses ${currentPar}.`,
+    needsModel: "Body build data is still loading…",
+    note: "Minetti (2002) walking cost, terrain- and load-corrected. PAR is a multiple of basal rate, not MET.",
+  },
   segmentList: {
     cardTitle: "Segments (timeline)",
     moveUp: "Move up",
@@ -148,16 +169,64 @@ export const en = {
     airPermeability: "Air permeability",
     vaporPermeability: "Vapor permeability",
     sweatAbsorption: "Sweat absorption",
-    bodyTemp: "Body temperature",
+    // Core and skin used to share one panel. They are split so each can carry
+    // its own threshold bands -- their limits differ, and overlaying both sets
+    // on a shared axis would be unreadable.
+    coreTempTitle: "Core temperature",
     coreTempChest: "Core temperature (chest)",
+    skinTempTitle: "Mean skin temperature",
     meanSkinTemp: "Mean skin temperature",
     skinWettedness: "Skin wettedness",
     waterStorageTitle: "Water storage in clothing",
     waterStorage: "Water storage",
+    saturationTitle: "Clothing moisture saturation",
+    saturation: "Saturation",
+    dehydrationTitle: "Dehydration",
+    dehydration: "Water loss",
+    comfortTitle: "Thermal sensation & comfort",
+    sensationOverall: "Sensation (cold −4 … +4 hot)",
+    comfortOverall: "Comfort (bad −4 … +4 good)",
+  },
+  comfort: {
+    now: "Now",
+    worstComfort: "Worst comfort",
+    sensation: "Sensation",
+    comfort: "Comfort",
+    scaleNote: "Zhang et al. (2010), −4 … +4",
+    validity:
+      "Calibrated on seated subjects in climate chambers — extrapolated here to sustained exertion.",
   },
   lineChartPanel: {
     timeAxis: "Time [min]",
     tooltipTime: (v: string | number) => `t = ${v} min`,
+  },
+  thresholds: {
+    cardTitle: "Strain overview",
+    none: "No physiological limit was crossed during this run.",
+    warning: "Warning",
+    critical: "Critical",
+    above: "above",
+    below: "below",
+    entry: (params: {
+      metric: string;
+      direction: string;
+      limit: string;
+      peak: string;
+      /** Already formatted with a leading space, or empty for dimensionless */
+      unit: string;
+      minute: string;
+    }) =>
+      `${params.metric} went ${params.direction} ${params.limit}${params.unit} — worst ${params.peak}${params.unit} at ${params.minute} min`,
+    inSegment: (label: string) => `in “${label}”`,
+    metrics: {
+      coreTemp: "Core temperature (chest)",
+      meanSkinTemp: "Mean skin temperature",
+      extremitySkinTemp: "Extremity skin temperature",
+      wettedness: "Skin wettedness",
+      shivering: "Shivering power",
+      dehydration: "Dehydration",
+      clothingSaturation: "Clothing moisture saturation",
+    },
   },
   confirmDialog: {
     apply: "Apply",
