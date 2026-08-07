@@ -9,6 +9,7 @@ import type {
   SimulateResponse,
 } from "../lib/jos3-types";
 import { DEFAULT_MODEL_CONFIG } from "../lib/jos3-types";
+import { BODY_NAMES } from "../lib/bodyNames";
 
 function newSegmentId(): string {
   return crypto.randomUUID();
@@ -59,7 +60,7 @@ interface ScenarioState {
   model: ModelConfig;
   segments: Segment[];
   selectedSegmentId: string | null;
-  selectedRegion: BodyName | null;
+  selectedRegions: BodyName[];
   lastResult: SimulateResponse | null;
   activeTab: string;
 
@@ -73,7 +74,10 @@ interface ScenarioState {
   updateSegmentRegions: (id: string, patch: RegionOverrides) => void;
   moveSegment: (id: string, direction: "up" | "down") => void;
   selectSegment: (id: string | null) => void;
-  selectRegion: (name: BodyName | null) => void;
+  selectRegion: (name: BodyName) => void;
+  toggleRegionSelection: (name: BodyName) => void;
+  selectAllRegions: () => void;
+  clearRegionSelection: () => void;
   setActiveTab: (value: string) => void;
   loadSpec: (spec: ScenarioSpec) => void;
   toSpec: () => ScenarioSpec;
@@ -84,7 +88,7 @@ export const useScenarioStore = create<ScenarioState>((set, get) => ({
   model: { ...DEFAULT_MODEL_CONFIG },
   segments: [],
   selectedSegmentId: null,
-  selectedRegion: null,
+  selectedRegions: [],
   lastResult: null,
   activeTab: "setup",
 
@@ -166,7 +170,15 @@ export const useScenarioStore = create<ScenarioState>((set, get) => ({
     }),
 
   selectSegment: (id) => set({ selectedSegmentId: id }),
-  selectRegion: (name) => set({ selectedRegion: name }),
+  selectRegion: (name) => set({ selectedRegions: [name] }),
+  toggleRegionSelection: (name) =>
+    set((state) => ({
+      selectedRegions: state.selectedRegions.includes(name)
+        ? state.selectedRegions.filter((n) => n !== name)
+        : [...state.selectedRegions, name],
+    })),
+  selectAllRegions: () => set({ selectedRegions: [...BODY_NAMES] }),
+  clearRegionSelection: () => set({ selectedRegions: [] }),
   setActiveTab: (value) => set({ activeTab: value }),
 
   loadSpec: (spec) => {
@@ -175,7 +187,7 @@ export const useScenarioStore = create<ScenarioState>((set, get) => ({
       model: clean.model,
       segments: clean.segments,
       selectedSegmentId: clean.segments[0]?.id ?? null,
-      selectedRegion: null,
+      selectedRegions: [],
       lastResult: null,
     });
   },

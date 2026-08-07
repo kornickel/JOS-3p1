@@ -1,4 +1,4 @@
-import type { KeyboardEvent } from "react";
+import type { KeyboardEvent, MouseEvent } from "react";
 import type { RegionShape } from "./bodyShapes";
 import { shapeCenter } from "./bodyShapes";
 import { bodyLabel, inlineLabel } from "../../lib/bodyNames";
@@ -16,14 +16,17 @@ export function BodyRegion({
   selected: boolean;
   showLabel: boolean;
   tooltip?: string;
-  onSelect: () => void;
+  // `additive` is true when the click/keypress carried Shift or Ctrl/Cmd --
+  // the caller adds/removes this region from the selection instead of
+  // replacing it.
+  onSelect: (additive: boolean) => void;
 }) {
   const common = {
     "data-region": shape.name,
     fill,
     stroke: selected ? "var(--series-1)" : "var(--border-ring)",
     strokeWidth: selected ? 2 : 1,
-    onClick: onSelect,
+    onClick: (e: MouseEvent) => onSelect(e.shiftKey || e.ctrlKey || e.metaKey),
     role: "button" as const,
     tabIndex: 0,
     "aria-label": bodyLabel(shape.name),
@@ -31,7 +34,7 @@ export function BodyRegion({
     onKeyDown: (e: KeyboardEvent) => {
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
-        onSelect();
+        onSelect(e.shiftKey || e.ctrlKey || e.metaKey);
       }
     },
   };

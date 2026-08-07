@@ -24,6 +24,14 @@ export const REGION_FIELD_DEFAULTS: Record<keyof RegionOverrides, number> = {
 
 const REGION_FIELDS = Object.keys(REGION_FIELD_DEFAULTS) as (keyof RegionOverrides)[];
 
+// The subset of per-region fields exposed as editable sliders in
+// RegionPanel/MultiRegionPanel (setpt_cr/setpt_sk are derived, not user-set).
+export const EDITABLE_REGION_FIELDS: (keyof RegionOverrides)[] = [
+  "Ta", "Tr", "RH", "Va", "Icl",
+  "Icl_evap_eff", "Icl_emissivity", "Icl_airperm", "Icl_waterabs",
+  "release_tau", "max_storage",
+];
+
 /** The effective 17-value array for every field, at a given point in the
  * timeline -- i.e. what the model actually holds for each region once
  * segments[0..uptoIndex] have all been applied in order. */
@@ -81,11 +89,21 @@ export function getRegionFieldValue(
   return snapshot[field][bodyName];
 }
 
+/** True if this field's effective value agrees across every region in
+ * `bodyNames` at this point in the timeline. */
+export function isRegionFieldUniformAmong(
+  snapshot: RegionSnapshot,
+  field: keyof RegionOverrides,
+  bodyNames: BodyName[]
+): boolean {
+  const values = bodyNames.map((bn) => snapshot[field][bn]);
+  return values.every((v) => v === values[0]);
+}
+
 /** True if this field's effective value is the same across all 17 regions
  * at this point in the timeline. */
 export function isRegionFieldUniform(snapshot: RegionSnapshot, field: keyof RegionOverrides): boolean {
-  const values = BODY_NAMES.map((bn) => snapshot[field][bn]);
-  return values.every((v) => v === values[0]);
+  return isRegionFieldUniformAmong(snapshot, field, BODY_NAMES);
 }
 
 /** True if `bodyName`'s effective value, on any field, differs from that
@@ -138,27 +156,44 @@ export function findLastExplicitSegment(
   return null;
 }
 
-/** Sets a single region's value for `field` on THIS segment. If the field
- * was never touched in this segment, writes a minimal single-key patch
- * (not a full 17-key dict against some baseline) so the other 16 regions
- * keep dynamically inheriting from earlier segments instead of being frozen
- * at whatever they looked like at edit time. */
+/** Sets `field`'s value for every region in `bodyNames` on THIS segment. If
+ * the field was never touched in this segment, writes a minimal patch
+ * covering only `bodyNames` (not a full 17-key dict against some baseline)
+ * so the untouched regions keep dynamically inheriting from earlier
+ * segments instead of being frozen at whatever they looked like at edit
+ * time. */
+export function withRegionFieldValueForMany(
+  segment: Segment,
+  field: keyof RegionOverrides,
+  bodyNames: BodyName[],
+  value: number
+): RegionValue {
+  const current = segment.regions[field];
+  const targeted = new Set(bodyNames);
+  if (current === undefined) {
+    const dict: Partial<Record<BodyName, number>> = {};
+    for (const bn of bodyNames) dict[bn] = value;
+    return dict as RegionValue;
+  }
+  if (typeof current === "number") {
+    const dict: Partial<Record<BodyName, number>> = {};
+    for (const bn of BODY_NAMES) dict[bn] = targeted.has(bn) ? value : current;
+    return dict as RegionValue;
+  }
+  const dict = { ...current };
+  for (const bn of bodyNames) dict[bn] = value;
+  return dict as RegionValue;
+}
+
+/** Sets a single region's value for `field` on THIS segment -- see
+ * `withRegionFieldValueForMany` for the underlying patch semantics. */
 export function withRegionFieldValue(
   segment: Segment,
   field: keyof RegionOverrides,
   bodyName: BodyName,
   value: number
 ): RegionValue {
-  const current = segment.regions[field];
-  if (current === undefined) {
-    return { [bodyName]: value } as RegionValue;
-  }
-  if (typeof current === "number") {
-    const dict: Partial<Record<BodyName, number>> = {};
-    for (const bn of BODY_NAMES) dict[bn] = bn === bodyName ? value : current;
-    return dict as RegionValue;
-  }
-  return { ...current, [bodyName]: value };
+  return withRegionFieldValueForMany(segment, field, [bodyName], value);
 }
 
 /** Un-sets `bodyName`'s explicit value for `field` on THIS segment, so it

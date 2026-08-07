@@ -120,14 +120,14 @@ export function BodyDiagramResult({ result }: { result: SimulateResponse }) {
       </div>
       <div className="mt-4 flex justify-center gap-8">
         <BodyFront
-          selectedRegion={null}
+          selectedRegions={[]}
           showLabels={false}
           getFill={getFill}
           getTooltip={(bn) => `${bodyLabel(bn)}: ${valueAt(bn, timeIndex).toFixed(2)} ${active.unit}`}
           onSelectRegion={() => {}}
         />
         <BodyBack
-          selectedRegion={null}
+          selectedRegions={[]}
           showLabels={false}
           getFill={getFill}
           getTooltip={(bn) => `${bodyLabel(bn)}: ${valueAt(bn, timeIndex).toFixed(2)} ${active.unit}`}

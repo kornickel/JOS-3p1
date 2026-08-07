@@ -3,6 +3,7 @@ import { bodyLabel } from "../../lib/bodyNames";
 import type { BodyName, RegionOverrides, Segment } from "../../lib/jos3-types";
 import {
   clearRegionFieldForBody,
+  EDITABLE_REGION_FIELDS,
   findLastExplicitSegment,
   getRegionFieldValue,
   isRegionFieldExplicitAt,
@@ -12,12 +13,6 @@ import {
 } from "../../lib/regionValues";
 import { useScenarioStore } from "../../store/scenarioStore";
 import { Slider } from "../common/Slider";
-
-const EDITABLE_FIELDS: (keyof RegionOverrides)[] = [
-  "Ta", "Tr", "RH", "Va", "Icl",
-  "Icl_evap_eff", "Icl_emissivity", "Icl_airperm", "Icl_waterabs",
-  "release_tau", "max_storage",
-];
 
 export function RegionPanel({
   segments,
@@ -57,7 +52,7 @@ export function RegionPanel({
         </span>
       </h4>
       <div className="flex flex-col gap-3">
-        {EDITABLE_FIELDS.map((field) => {
+        {EDITABLE_REGION_FIELDS.map((field) => {
           const paramMeta = meta.input_params[field];
           if (!paramMeta) return null;
           const value = getRegionFieldValue(snapshot, field, region);

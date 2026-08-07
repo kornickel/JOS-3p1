@@ -5,7 +5,7 @@ import { BodyRegion } from "./BodyRegion";
 export function BodySilhouette({
   torso,
   viewLabel,
-  selectedRegion,
+  selectedRegions,
   showLabels = true,
   getFill,
   getTooltip,
@@ -13,12 +13,13 @@ export function BodySilhouette({
 }: {
   torso: RegionShape;
   viewLabel: string;
-  selectedRegion: BodyName | null;
+  selectedRegions: BodyName[];
   showLabels?: boolean;
   getFill: (name: BodyName) => string;
   getTooltip?: (name: BodyName) => string;
-  onSelectRegion: (name: BodyName) => void;
+  onSelectRegion: (name: BodyName, additive: boolean) => void;
 }) {
+  const isSelected = (name: BodyName) => selectedRegions.includes(name);
   return (
     <div className="flex flex-col items-center gap-1">
       <svg viewBox={VIEW_BOX} className="w-full max-w-[220px]" role="img" aria-label={viewLabel}>
@@ -28,19 +29,19 @@ export function BodySilhouette({
             key={shape.name}
             shape={shape}
             fill={getFill(shape.name)}
-            selected={selectedRegion === shape.name}
+            selected={isSelected(shape.name)}
             showLabel={showLabels}
             tooltip={getTooltip?.(shape.name)}
-            onSelect={() => onSelectRegion(shape.name)}
+            onSelect={(additive) => onSelectRegion(shape.name, additive)}
           />
         ))}
         <BodyRegion
           shape={torso}
           fill={getFill(torso.name)}
-          selected={selectedRegion === torso.name}
+          selected={isSelected(torso.name)}
           showLabel={showLabels}
           tooltip={getTooltip?.(torso.name)}
-          onSelect={() => onSelectRegion(torso.name)}
+          onSelect={(additive) => onSelectRegion(torso.name, additive)}
         />
       </svg>
       <span className="text-xs" style={{ color: "var(--text-muted)" }}>
