@@ -1,9 +1,11 @@
 import { useRef, useState } from "react";
 import { loadScenario, useDeleteScenario, useSaveScenario, useScenarioList } from "../../lib/api";
+import { useT } from "../../lib/i18n";
 import { useScenarioStore } from "../../store/scenarioStore";
 
 export function ScenarioBar() {
-  const [name, setName] = useState("mein-szenario");
+  const t = useT();
+  const [name, setName] = useState(t.scenarioBar.defaultName);
   const toSpec = useScenarioStore((s) => s.toSpec);
   const loadSpec = useScenarioStore((s) => s.loadSpec);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -29,7 +31,7 @@ export function ScenarioBar() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${name.trim() || "jos3-szenario"}.json`;
+    a.download = t.scenarioBar.exportFilename(name);
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -45,7 +47,7 @@ export function ScenarioBar() {
         type="text"
         value={name}
         onChange={(e) => setName(e.target.value)}
-        placeholder="Szenario-Name"
+        placeholder={t.scenarioBar.namePlaceholder}
         className="w-40 rounded border px-2 py-1 text-sm outline-none"
         style={{ borderColor: "var(--gridline)", background: "var(--surface-1)", color: "var(--text-primary)" }}
       />
@@ -55,7 +57,7 @@ export function ScenarioBar() {
         className="rounded border px-2 py-1 text-xs"
         style={{ borderColor: "var(--gridline)", color: "var(--series-1)" }}
       >
-        Speichern
+        {t.scenarioBar.save}
       </button>
       <select
         className="rounded border px-2 py-1 text-xs"
@@ -63,7 +65,7 @@ export function ScenarioBar() {
         value=""
         onChange={(e) => load(e.target.value)}
       >
-        <option value="">Gespeicherte Szenarien laden…</option>
+        <option value="">{t.scenarioBar.loadPlaceholder}</option>
         {scenarios?.map((s) => (
           <option key={s.name} value={s.name}>
             {s.name}
@@ -77,7 +79,7 @@ export function ScenarioBar() {
           className="rounded border px-2 py-1 text-xs"
           style={{ borderColor: "var(--gridline)", color: "var(--status-critical)" }}
         >
-          Löschen
+          {t.scenarioBar.delete}
         </button>
       )}
       <span className="mx-1" style={{ color: "var(--gridline)" }}>
@@ -89,7 +91,7 @@ export function ScenarioBar() {
         className="rounded border px-2 py-1 text-xs"
         style={{ borderColor: "var(--gridline)", color: "var(--text-secondary)" }}
       >
-        Als Datei sichern
+        {t.scenarioBar.saveToFile}
       </button>
       <button
         type="button"
@@ -97,7 +99,7 @@ export function ScenarioBar() {
         className="rounded border px-2 py-1 text-xs"
         style={{ borderColor: "var(--gridline)", color: "var(--text-secondary)" }}
       >
-        Datei laden…
+        {t.scenarioBar.loadFile}
       </button>
       <input
         ref={fileInputRef}

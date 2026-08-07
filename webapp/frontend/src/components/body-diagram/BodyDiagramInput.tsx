@@ -1,6 +1,7 @@
 import { useState } from "react";
 import * as ToggleGroup from "@radix-ui/react-toggle-group";
 import { BODY_NAMES } from "../../lib/bodyNames";
+import { useT } from "../../lib/i18n";
 import type { BodyName, Segment } from "../../lib/jos3-types";
 import { regionHasDivergentOverride, useEffectiveRegionSnapshot } from "../../lib/regionValues";
 import { useScenarioStore } from "../../store/scenarioStore";
@@ -11,6 +12,7 @@ import { RegionPanel } from "./RegionPanel";
 import { Card } from "../common/Card";
 
 export function BodyDiagramInput({ segments, index }: { segments: Segment[]; index: number }) {
+  const t = useT();
   const [view, setView] = useState<"front" | "back">("front");
   const selectedRegions = useScenarioStore((s) => s.selectedRegions);
   const selectRegion = useScenarioStore((s) => s.selectRegion);
@@ -23,7 +25,7 @@ export function BodyDiagramInput({ segments, index }: { segments: Segment[]; ind
   if (!segment) {
     return (
       <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-        Lege zuerst ein Szenario-Segment an.
+        {t.bodyDiagramInput.noSegment}
       </p>
     );
   }
@@ -47,12 +49,12 @@ export function BodyDiagramInput({ segments, index }: { segments: Segment[]; ind
 
   const hint =
     selectedRegions.length === 0
-      ? "Region anklicken, um sie zu bearbeiten — mit Umschalt/Strg-Klick mehrere auswählen."
+      ? t.bodyDiagramInput.hintNone
       : isAllSelected
-        ? "Alle Körperteile ausgewählt — Änderungen wirken auf das ganze Segment."
+        ? t.bodyDiagramInput.hintAll
         : selectedRegions.length > 1
-          ? `${selectedRegions.length} Körperteile ausgewählt — Änderungen wirken auf die Auswahl.`
-          : "Region anklicken, um sie rechts zu bearbeiten.";
+          ? t.bodyDiagramInput.hintMultiple(selectedRegions.length)
+          : t.bodyDiagramInput.hintOne;
 
   return (
     <div className="flex flex-col gap-4">
@@ -76,7 +78,7 @@ export function BodyDiagramInput({ segments, index }: { segments: Segment[]; ind
                     color: view === v ? "white" : "var(--text-secondary)",
                   }}
                 >
-                  {v === "front" ? "Vorne" : "Hinten"}
+                  {v === "front" ? t.bodyDiagramInput.viewFront : t.bodyDiagramInput.viewBack}
                 </ToggleGroup.Item>
               ))}
             </ToggleGroup.Root>
@@ -100,7 +102,7 @@ export function BodyDiagramInput({ segments, index }: { segments: Segment[]; ind
                 color: isAllSelected ? "white" : "var(--text-secondary)",
               }}
             >
-              Alle Körperteile
+              {t.bodyDiagramInput.selectAll}
             </button>
             {selectedRegions.length > 0 && (
               <button
@@ -109,7 +111,7 @@ export function BodyDiagramInput({ segments, index }: { segments: Segment[]; ind
                 className="rounded border px-3 py-1.5 text-xs"
                 style={{ borderColor: "var(--gridline)", color: "var(--text-secondary)" }}
               >
-                Auswahl aufheben
+                {t.bodyDiagramInput.clearSelection}
               </button>
             )}
           </div>
@@ -121,8 +123,7 @@ export function BodyDiagramInput({ segments, index }: { segments: Segment[]; ind
             <RegionPanel segments={segments} index={index} region={selectedRegions[0]} />
           ) : (
             <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-              Wähle links eine Körperregion aus, um ihre Parameter für das Segment „{segment.label}“ zu
-              bearbeiten.
+              {t.bodyDiagramInput.chooseRegion(segment.label)}
             </p>
           )}
         </Card>

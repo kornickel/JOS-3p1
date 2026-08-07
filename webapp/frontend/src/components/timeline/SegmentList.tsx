@@ -1,7 +1,9 @@
+import { useT } from "../../lib/i18n";
 import { useScenarioStore } from "../../store/scenarioStore";
 import { Card } from "../common/Card";
 
 export function SegmentList() {
+  const t = useT();
   const segments = useScenarioStore((s) => s.segments);
   const selectedSegmentId = useScenarioStore((s) => s.selectedSegmentId);
   const selectSegment = useScenarioStore((s) => s.selectSegment);
@@ -11,7 +13,7 @@ export function SegmentList() {
   const moveSegment = useScenarioStore((s) => s.moveSegment);
 
   return (
-    <Card title="Segmente (zeitlicher Ablauf)">
+    <Card title={t.segmentList.cardTitle}>
       <div className="flex flex-col gap-1.5">
         {segments.map((seg, i) => {
           const minutes = (seg.times * seg.dtime) / 60;
@@ -45,7 +47,7 @@ export function SegmentList() {
                 disabled={i === 0}
                 className="px-1 text-xs disabled:opacity-30"
                 style={{ color: "var(--text-secondary)" }}
-                aria-label="Nach oben verschieben"
+                aria-label={t.segmentList.moveUp}
               >
                 ↑
               </button>
@@ -55,7 +57,7 @@ export function SegmentList() {
                 disabled={i === segments.length - 1}
                 className="px-1 text-xs disabled:opacity-30"
                 style={{ color: "var(--text-secondary)" }}
-                aria-label="Nach unten verschieben"
+                aria-label={t.segmentList.moveDown}
               >
                 ↓
               </button>
@@ -64,8 +66,8 @@ export function SegmentList() {
                 onClick={() => duplicateSegment(seg.id)}
                 className="px-1 text-xs"
                 style={{ color: "var(--text-secondary)" }}
-                aria-label="Segment duplizieren"
-                title="Segment duplizieren"
+                aria-label={t.segmentList.duplicate}
+                title={t.segmentList.duplicate}
               >
                 ⧉
               </button>
@@ -74,7 +76,7 @@ export function SegmentList() {
                 onClick={() => removeSegment(seg.id)}
                 className="px-1 text-xs"
                 style={{ color: "var(--status-critical)" }}
-                aria-label="Segment löschen"
+                aria-label={t.segmentList.delete}
               >
                 ✕
               </button>
@@ -88,11 +90,11 @@ export function SegmentList() {
         className="mt-3 w-full rounded border px-3 py-1.5 text-sm"
         style={{ borderColor: "var(--gridline)", color: "var(--series-1)" }}
       >
-        + Segment hinzufügen
+        {t.segmentList.addSegment}
       </button>
       {segments.length > 0 && (
         <p className="mt-2 text-xs" style={{ color: "var(--text-muted)" }}>
-          Gesamtdauer: {(segments.reduce((sum, s) => sum + s.times * s.dtime, 0) / 60).toFixed(0)} min
+          {t.segmentList.totalDuration((segments.reduce((sum, s) => sum + s.times * s.dtime, 0) / 60).toFixed(0))}
         </p>
       )}
     </Card>

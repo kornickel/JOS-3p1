@@ -2,6 +2,7 @@ import type { KeyboardEvent, MouseEvent } from "react";
 import type { RegionShape } from "./bodyShapes";
 import { shapeCenter } from "./bodyShapes";
 import { bodyLabel, inlineLabel } from "../../lib/bodyNames";
+import { useLanguageStore } from "../../store/languageStore";
 
 export function BodyRegion({
   shape,
@@ -21,6 +22,7 @@ export function BodyRegion({
   // replacing it.
   onSelect: (additive: boolean) => void;
 }) {
+  const language = useLanguageStore((s) => s.language);
   const common = {
     "data-region": shape.name,
     fill,
@@ -29,7 +31,7 @@ export function BodyRegion({
     onClick: (e: MouseEvent) => onSelect(e.shiftKey || e.ctrlKey || e.metaKey),
     role: "button" as const,
     tabIndex: 0,
-    "aria-label": bodyLabel(shape.name),
+    "aria-label": bodyLabel(shape.name, language),
     style: { cursor: "pointer", outline: "none" },
     onKeyDown: (e: KeyboardEvent) => {
       if (e.key === "Enter" || e.key === " ") {
@@ -43,7 +45,7 @@ export function BodyRegion({
 
   return (
     <g>
-      <title>{tooltip ?? bodyLabel(shape.name)}</title>
+      <title>{tooltip ?? bodyLabel(shape.name, language)}</title>
       {shape.kind === "circle" && <circle cx={shape.cx} cy={shape.cy} r={shape.r} {...common} />}
       {shape.kind === "ellipse" && (
         <ellipse cx={shape.cx} cy={shape.cy} rx={shape.rx} ry={shape.ry} {...common} />
@@ -68,7 +70,7 @@ export function BodyRegion({
           pointerEvents="none"
           style={{ fill: "var(--text-primary)", opacity: 0.65 }}
         >
-          {inlineLabel(shape.name)}
+          {inlineLabel(shape.name, language)}
         </text>
       )}
     </g>

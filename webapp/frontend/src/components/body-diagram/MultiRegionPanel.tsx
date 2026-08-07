@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { useMeta } from "../../lib/api";
+import { useLocalizedMeta } from "../../lib/useLocalizedMeta";
 import { BODY_NAMES, bodyLabel } from "../../lib/bodyNames";
+import { useT } from "../../lib/i18n";
 import type { BodyName, RegionOverrides, Segment } from "../../lib/jos3-types";
 import {
   EDITABLE_REGION_FIELDS,
@@ -9,6 +10,7 @@ import {
   useEffectiveRegionSnapshot,
   withRegionFieldValueForMany,
 } from "../../lib/regionValues";
+import { useLanguageStore } from "../../store/languageStore";
 import { useScenarioStore } from "../../store/scenarioStore";
 import { ConfirmDialog } from "../common/ConfirmDialog";
 import { Slider } from "../common/Slider";
@@ -22,7 +24,9 @@ export function MultiRegionPanel({
   index: number;
   regions: BodyName[];
 }) {
-  const { data: meta } = useMeta();
+  const t = useT();
+  const language = useLanguageStore((s) => s.language);
+  const { data: meta } = useLocalizedMeta();
   const updateSegmentRegions = useScenarioStore((s) => s.updateSegmentRegions);
   const snapshot = useEffectiveRegionSnapshot(segments, index);
   const segment = segments[index];
@@ -52,7 +56,7 @@ export function MultiRegionPanel({
     setConfirmField(null);
   };
 
-  const headerLabel = isAllRegions ? "Alle Körperteile" : `${regions.length} Körperteile ausgewählt`;
+  const headerLabel = isAllRegions ? t.multiRegionPanel.allBodyParts : t.multiRegionPanel.selectedCount(regions.length);
 
   return (
     <div className="flex flex-col gap-4">
@@ -60,12 +64,12 @@ export function MultiRegionPanel({
         <h4 className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
           {headerLabel}
           <span className="ml-2 text-xs" style={{ color: "var(--text-muted)" }}>
-            — Segment „{segment.label}“
+            {t.common.segmentSuffix(segment.label)}
           </span>
         </h4>
         {!isAllRegions && (
           <p className="mt-0.5 text-xs" style={{ color: "var(--text-muted)" }}>
-            {regions.map(bodyLabel).join(", ")}
+            {regions.map((r) => bodyLabel(r, language)).join(", ")}
           </p>
         )}
       </div>
@@ -105,7 +109,7 @@ export function MultiRegionPanel({
                 <input
                   type="number"
                   value={raw}
-                  placeholder="unterschiedliche Werte"
+                  placeholder={t.multiRegionPanel.differentValuesPlaceholder}
                   min={paramMeta.min}
                   max={paramMeta.max}
                   step={paramMeta.step}
@@ -114,7 +118,7 @@ export function MultiRegionPanel({
                   style={{ borderColor: "var(--gridline)", background: "var(--surface-1)", color: "var(--text-primary)" }}
                 />
                 <div className="mt-0.5 text-xs" style={{ color: "var(--series-4)" }}>
-                  weicht zwischen Körperregionen ab — Wert eingeben, um für {isAllRegions ? "alle Regionen" : "die Auswahl"} zu übernehmen
+                  {t.multiRegionPanel.divergesHint(isAllRegions)}
                 </div>
               </div>
               <button
@@ -124,7 +128,7 @@ export function MultiRegionPanel({
                 className="mb-1.5 shrink-0 rounded border px-2 py-1 text-xs disabled:opacity-40"
                 style={{ borderColor: "var(--gridline)", color: "var(--text-secondary)" }}
               >
-                Übernehmen
+                {t.multiRegionPanel.apply}
               </button>
             </div>
           );
@@ -133,14 +137,18 @@ export function MultiRegionPanel({
 
       <ConfirmDialog
         open={confirmField !== null}
-        title="Wert übernehmen?"
+        title={t.multiRegionPanel.confirmTitle}
         description={
           confirmField && confirmMeta
-            ? `„${confirmMeta.label}“ wird für Segment „${segment.label}“ auf ${
-                isAllRegions
-                  ? "allen 17 Körperregionen"
-                  : `den ${regions.length} ausgewählten Körperregionen (${regions.map(bodyLabel).join(", ")})`
-              } auf ${confirmValue}${confirmMeta.unit === "-" ? "" : ` ${confirmMeta.unit}`} gesetzt. Die bisherigen, voneinander abweichenden Werte für dieses Feld gehen dabei verloren.`
+            ? t.multiRegionPanel.confirmMessage({
+                paramLabel: confirmMeta.label,
+                segmentLabel: segment.label,
+                isAllRegions,
+                regionCount: regions.length,
+                regionNames: regions.map((r) => bodyLabel(r, language)).join(", "),
+                value: confirmValue,
+                unit: confirmMeta.unit === "-" ? "" : confirmMeta.unit,
+              })
             : ""
         }
         onConfirm={applyConfirmed}

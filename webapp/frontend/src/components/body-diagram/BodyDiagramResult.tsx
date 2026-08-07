@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { useMeta } from "../../lib/api";
+import { useLocalizedMeta } from "../../lib/useLocalizedMeta";
 import { BODY_NAMES, bodyLabel } from "../../lib/bodyNames";
 import { divergingColor, sequentialColor } from "../../lib/colorScale";
+import { useT } from "../../lib/i18n";
 import type { BodyName, SimulateResponse } from "../../lib/jos3-types";
+import { useLanguageStore } from "../../store/languageStore";
 import { Card } from "../common/Card";
 import { SelectField } from "../common/SelectField";
 import { BodyBack } from "./BodyBack";
@@ -13,7 +15,9 @@ import { TimeScrubber } from "./TimeScrubber";
 const TSK_DEVIATION = "__tsk_deviation__";
 
 export function BodyDiagramResult({ result }: { result: SimulateResponse }) {
-  const { data: meta } = useMeta();
+  const t = useT();
+  const language = useLanguageStore((s) => s.language);
+  const { data: meta } = useLocalizedMeta();
   const { results } = result;
   const timeSeconds = results.ModTime as number[];
 
@@ -28,14 +32,14 @@ export function BodyDiagramResult({ result }: { result: SimulateResponse }) {
     if ("TskHead" in results && "SetptskHead" in results) {
       opts.push({
         value: TSK_DEVIATION,
-        label: "Hauttemperatur: Abweichung vom Sollwert",
+        label: t.bodyDiagramResult.tskDeviationLabel,
         unit: "°C",
         diverging: true,
       });
     }
     opts.sort((a, b) => a.label.localeCompare(b.label));
     return opts;
-  }, [meta, results]);
+  }, [meta, results, t]);
 
   const [selected, setSelected] = useState<string | null>(null);
   const [timeIndex, setTimeIndex] = useState(timeSeconds.length - 1);
@@ -63,19 +67,19 @@ export function BodyDiagramResult({ result }: { result: SimulateResponse }) {
   if (!meta || !active) {
     return (
       <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-        Keine Ergebnisgrößen pro Körperregion verfügbar.
+        {t.bodyDiagramResult.noPerRegionData}
       </p>
     );
   }
 
-  const valueAt = (bodyName: BodyName, t: number): number => {
+  const valueAt = (bodyName: BodyName, timeIdx: number): number => {
     if (active.value === TSK_DEVIATION) {
-      return (results[`Tsk${bodyName}`][t] as number) - (results[`Setptsk${bodyName}`][t] as number);
+      return (results[`Tsk${bodyName}`][timeIdx] as number) - (results[`Setptsk${bodyName}`][timeIdx] as number);
     }
-    return results[`${active.value}${bodyName}`][t] as number;
+    return results[`${active.value}${bodyName}`][timeIdx] as number;
   };
 
-  const allValues = BODY_NAMES.flatMap((bn) => timeSeconds.map((_, t) => valueAt(bn, t)));
+  const allValues = BODY_NAMES.flatMap((bn) => timeSeconds.map((_, i) => valueAt(bn, i)));
   const min = Math.min(...allValues);
   const max = Math.max(...allValues);
   const absMax = Math.max(Math.abs(min), Math.abs(max)) || 1;
@@ -83,17 +87,17 @@ export function BodyDiagramResult({ result }: { result: SimulateResponse }) {
   const getFill = (bodyName: BodyName): string => {
     const v = valueAt(bodyName, timeIndex);
     if (active.diverging) return divergingColor(v / absMax);
-    const t = max > min ? (v - min) / (max - min) : 0.5;
-    return sequentialColor(t);
+    const ratio = max > min ? (v - min) / (max - min) : 0.5;
+    return sequentialColor(ratio);
   };
 
   const minutes = timeSeconds[timeIndex] / 60;
 
   return (
-    <Card title="Ergebnis am Körper (Heatmap)">
+    <Card title={t.bodyDiagramResult.cardTitle}>
       <div className="mb-4 max-w-sm">
         <SelectField
-          label="Größe"
+          label={t.bodyDiagramResult.quantityLabel}
           value={active.value}
           options={candidates.map((c) => ({ value: c.value, label: c.label }))}
           onChange={setSelected}
@@ -104,7 +108,7 @@ export function BodyDiagramResult({ result }: { result: SimulateResponse }) {
           type="button"
           onClick={() => setIsPlaying((p) => !p)}
           disabled={maxIndex === 0}
-          aria-label={isPlaying ? "Pause" : "Abspielen"}
+          aria-label={isPlaying ? t.bodyDiagramResult.pause : t.bodyDiagramResult.play}
           className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-sm disabled:opacity-30"
           style={{ borderColor: "var(--gridline)", color: "var(--series-1)" }}
         >
@@ -134,14 +138,18 @@ export function BodyDiagramResult({ result }: { result: SimulateResponse }) {
           selectedRegions={[]}
           showLabels={false}
           getFill={getFill}
-          getTooltip={(bn) => `${bodyLabel(bn)}: ${valueAt(bn, timeIndex).toFixed(2)} ${active.unit}`}
+          getTooltip={(bn) =>
+            t.bodyDiagramResult.tooltip(bodyLabel(bn, language), valueAt(bn, timeIndex).toFixed(2), active.unit)
+          }
           onSelectRegion={() => {}}
         />
         <BodyBack
           selectedRegions={[]}
           showLabels={false}
           getFill={getFill}
-          getTooltip={(bn) => `${bodyLabel(bn)}: ${valueAt(bn, timeIndex).toFixed(2)} ${active.unit}`}
+          getTooltip={(bn) =>
+            t.bodyDiagramResult.tooltip(bodyLabel(bn, language), valueAt(bn, timeIndex).toFixed(2), active.unit)
+          }
           onSelectRegion={() => {}}
         />
       </div>

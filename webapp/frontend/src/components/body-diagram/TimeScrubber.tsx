@@ -1,4 +1,5 @@
 import * as RadixSlider from "@radix-ui/react-slider";
+import { useT } from "../../lib/i18n";
 
 export function TimeScrubber({
   index,
@@ -13,11 +14,12 @@ export function TimeScrubber({
   description?: string | null;
   onChange: (index: number) => void;
 }) {
+  const t = useT();
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-baseline justify-between text-sm">
         <span style={{ color: "var(--text-secondary)" }}>
-          Zeitpunkt{description ? `: ${description}` : ""}
+          {t.timeScrubber.label}{description ? `: ${description}` : ""}
         </span>
         <span className="tabular-nums" style={{ color: "var(--text-primary)" }}>
           {timeLabel}
@@ -37,7 +39,7 @@ export function TimeScrubber({
         <RadixSlider.Thumb
           className="block h-4 w-4 rounded-full shadow focus:outline-none focus:ring-2"
           style={{ background: "var(--series-1)" }}
-          aria-label="Zeitpunkt"
+          aria-label={t.timeScrubber.label}
         />
       </RadixSlider.Root>
     </div>

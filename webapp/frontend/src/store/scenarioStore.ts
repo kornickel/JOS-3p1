@@ -10,9 +10,17 @@ import type {
 } from "../lib/jos3-types";
 import { DEFAULT_MODEL_CONFIG } from "../lib/jos3-types";
 import { BODY_NAMES } from "../lib/bodyNames";
+import { dictionaries } from "../lib/i18n";
+import { useLanguageStore } from "./languageStore";
 
 function newSegmentId(): string {
   return crypto.randomUUID();
+}
+
+// Store actions run outside React's render phase, so the active language is
+// read imperatively off the language store rather than via the useT() hook.
+function currentDictionary() {
+  return dictionaries[useLanguageStore.getState().language];
 }
 
 /** Drops explicit `null` values from a shallow object, converting them to
@@ -45,10 +53,10 @@ function sanitizeScenarioSpec(spec: ScenarioSpec): ScenarioSpec {
   return { ...spec, segments: spec.segments.map(sanitizeSegment) };
 }
 
-export function makeDefaultSegment(label = "Segment 1"): Segment {
+export function makeDefaultSegment(label?: string): Segment {
   return {
     id: newSegmentId(),
-    label,
+    label: label ?? currentDictionary().scenarioStore.defaultSegmentLabel,
     dtime: 60,
     times: 60,
     globals: {},
@@ -104,7 +112,7 @@ export const useScenarioStore = create<ScenarioState>((set, get) => ({
   },
 
   addSegment: () => {
-    const seg = makeDefaultSegment(`Segment ${get().segments.length + 1}`);
+    const seg = makeDefaultSegment(currentDictionary().scenarioStore.segmentN(get().segments.length + 1));
     set((state) => ({ segments: [...state.segments, seg], selectedSegmentId: seg.id }));
   },
 
@@ -116,7 +124,7 @@ export const useScenarioStore = create<ScenarioState>((set, get) => ({
       const copy: Segment = {
         ...original,
         id: newSegmentId(),
-        label: `${original.label} (Kopie)`,
+        label: currentDictionary().scenarioStore.copySuffix(original.label),
         globals: {
           ...original.globals,
           options: original.globals.options ? { ...original.globals.options } : undefined,

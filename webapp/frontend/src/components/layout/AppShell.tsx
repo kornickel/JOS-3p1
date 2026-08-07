@@ -1,5 +1,6 @@
 import * as Tabs from "@radix-ui/react-tabs";
 import type { ReactNode } from "react";
+import { LanguageSwitcher } from "./LanguageSwitcher";
 import { ScenarioBar } from "./ScenarioBar";
 
 export interface TabDef {
@@ -28,7 +29,10 @@ export function AppShell({
         <h1 className="text-lg font-medium" style={{ color: "var(--text-primary)" }}>
           {title}
         </h1>
-        <ScenarioBar />
+        <div className="flex flex-wrap items-center gap-3">
+          <ScenarioBar />
+          <LanguageSwitcher />
+        </div>
       </header>
       <Tabs.Root value={activeTab} onValueChange={onActiveTabChange} className="flex flex-col">
         <Tabs.List

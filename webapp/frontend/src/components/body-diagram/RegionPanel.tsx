@@ -1,5 +1,6 @@
-import { useMeta } from "../../lib/api";
+import { useLocalizedMeta } from "../../lib/useLocalizedMeta";
 import { bodyLabel } from "../../lib/bodyNames";
+import { useT } from "../../lib/i18n";
 import type { BodyName, RegionOverrides, Segment } from "../../lib/jos3-types";
 import {
   clearRegionFieldForBody,
@@ -11,6 +12,7 @@ import {
   useEffectiveRegionSnapshot,
   withRegionFieldValue,
 } from "../../lib/regionValues";
+import { useLanguageStore } from "../../store/languageStore";
 import { useScenarioStore } from "../../store/scenarioStore";
 import { Slider } from "../common/Slider";
 
@@ -23,7 +25,9 @@ export function RegionPanel({
   index: number;
   region: BodyName;
 }) {
-  const { data: meta } = useMeta();
+  const t = useT();
+  const language = useLanguageStore((s) => s.language);
+  const { data: meta } = useLocalizedMeta();
   const updateSegmentRegions = useScenarioStore((s) => s.updateSegmentRegions);
   const snapshot = useEffectiveRegionSnapshot(segments, index);
   const segment = segments[index];
@@ -46,9 +50,9 @@ export function RegionPanel({
   return (
     <div className="flex flex-col gap-4">
       <h4 className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
-        {bodyLabel(region)}
+        {bodyLabel(region, language)}
         <span className="ml-2 text-xs" style={{ color: "var(--text-muted)" }}>
-          — Segment „{segment.label}“
+          {t.common.segmentSuffix(segment.label)}
         </span>
       </h4>
       <div className="flex flex-col gap-3">
@@ -60,10 +64,10 @@ export function RegionPanel({
           const explicitHere = isRegionFieldExplicitAt(segment, field, region);
           const provenanceIndex = findLastExplicitSegment(segments, index, field, region);
           const provenanceLabel = explicitHere
-            ? "gesetzt in diesem Segment"
+            ? t.provenance.explicit
             : provenanceIndex !== null
-              ? `geerbt von Segment ${provenanceIndex + 1} „${segments[provenanceIndex].label}“`
-              : "geerbt (Modell-Standard)";
+              ? t.provenance.inheritedFromWithLabel(provenanceIndex + 1, segments[provenanceIndex].label)
+              : t.provenance.default;
           return (
             <div key={field} className="flex items-end gap-2">
               <div className="flex-1">
@@ -80,7 +84,7 @@ export function RegionPanel({
                   <span style={{ color: explicitHere ? "var(--text-secondary)" : "var(--text-muted)" }}>
                     {provenanceLabel}
                   </span>
-                  {!uniform && <span style={{ color: "var(--series-4)" }}>· weicht zwischen Körperregionen ab</span>}
+                  {!uniform && <span style={{ color: "var(--series-4)" }}>{t.regionPanel.divergesNote}</span>}
                 </div>
               </div>
               {explicitHere && (
@@ -89,7 +93,7 @@ export function RegionPanel({
                   onClick={() => resetToInherited(field)}
                   className="mb-1.5 shrink-0 rounded border px-2 py-1 text-xs"
                   style={{ borderColor: "var(--gridline)", color: "var(--text-secondary)" }}
-                  title="Auf vererbten Wert zurücksetzen"
+                  title={t.provenance.resetTooltip}
                 >
                   ↺
                 </button>
@@ -99,9 +103,9 @@ export function RegionPanel({
                 onClick={() => applyToAll(field)}
                 className="mb-1.5 shrink-0 rounded border px-2 py-1 text-xs"
                 style={{ borderColor: "var(--gridline)", color: "var(--text-secondary)" }}
-                title="Diesen Wert auf alle Körperregionen anwenden"
+                title={t.regionPanel.applyToAllTooltip}
               >
-                → alle
+                {t.regionPanel.applyToAllButton}
               </button>
             </div>
           );

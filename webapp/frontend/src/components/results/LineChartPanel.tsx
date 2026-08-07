@@ -9,6 +9,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { useT } from "../../lib/i18n";
 import type { SegmentBound } from "../../lib/jos3-types";
 import { Card } from "../common/Card";
 
@@ -31,6 +32,7 @@ export function LineChartPanel({
   series: SeriesDef[];
   segmentBounds: SegmentBound[];
 }) {
+  const t = useT();
   return (
     <Card title={unit ? `${title} [${unit}]` : title}>
       <ResponsiveContainer width="100%" height={190}>
@@ -40,7 +42,7 @@ export function LineChartPanel({
             dataKey="t"
             tick={{ fontSize: 11, fill: "var(--text-muted)" }}
             stroke="var(--baseline)"
-            label={{ value: "Zeit [min]", position: "insideBottom", offset: -4, fontSize: 11, fill: "var(--text-muted)" }}
+            label={{ value: t.lineChartPanel.timeAxis, position: "insideBottom", offset: -4, fontSize: 11, fill: "var(--text-muted)" }}
           />
           <YAxis tick={{ fontSize: 11, fill: "var(--text-muted)" }} stroke="var(--baseline)" width={42} />
           <Tooltip
@@ -50,7 +52,7 @@ export function LineChartPanel({
               fontSize: 12,
               color: "var(--text-primary)",
             }}
-            labelFormatter={(v) => `t = ${v} min`}
+            labelFormatter={(v) => t.lineChartPanel.tooltipTime(String(v))}
           />
           {segmentBounds.map((b) => (
             <ReferenceLine key={b.id} x={b.start_seconds / 60} stroke="var(--baseline)" strokeWidth={1} />

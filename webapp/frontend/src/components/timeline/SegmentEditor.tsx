@@ -1,4 +1,5 @@
-import { useMeta } from "../../lib/api";
+import { useLocalizedMeta } from "../../lib/useLocalizedMeta";
+import { useT } from "../../lib/i18n";
 import {
   computeEffectiveOptions,
   computeEffectivePAR,
@@ -16,15 +17,21 @@ import { SelectField } from "../common/SelectField";
 import { Slider } from "../common/Slider";
 
 function ProvenanceHint({ explicit, segmentIndex }: { explicit: boolean; segmentIndex: number | null }) {
+  const t = useT();
   return (
     <span className="text-xs" style={{ color: explicit ? "var(--text-secondary)" : "var(--text-muted)" }}>
-      {explicit ? "gesetzt in diesem Segment" : segmentIndex !== null ? `geerbt von Segment ${segmentIndex + 1}` : "geerbt (Modell-Standard)"}
+      {explicit
+        ? t.provenance.explicit
+        : segmentIndex !== null
+          ? t.provenance.inheritedFromIndex(segmentIndex + 1)
+          : t.provenance.default}
     </span>
   );
 }
 
 export function SegmentEditor({ segments, index }: { segments: Segment[]; index: number }) {
-  const { data: meta } = useMeta();
+  const t = useT();
+  const { data: meta } = useLocalizedMeta();
   const updateSegmentMeta = useScenarioStore((s) => s.updateSegmentMeta);
   const updateSegmentGlobals = useScenarioStore((s) => s.updateSegmentGlobals);
   const segment = segments[index];
@@ -40,11 +47,11 @@ export function SegmentEditor({ segments, index }: { segments: Segment[]; index:
   const activeOptionsCount = Object.values(options).filter(Boolean).length;
 
   return (
-    <Card title={`Segment bearbeiten: ${segment.label}`}>
+    <Card title={t.segmentEditor.cardTitle(segment.label)}>
       <div className="grid grid-cols-2 gap-4">
         <label className="col-span-2 flex flex-col gap-1">
           <span className="text-sm" style={{ color: "var(--text-secondary)" }}>
-            Bezeichnung
+            {t.segmentEditor.labelField}
           </span>
           <input
             type="text"
@@ -55,7 +62,7 @@ export function SegmentEditor({ segments, index }: { segments: Segment[]; index:
           />
         </label>
         <NumberField
-          label="Dauer"
+          label={t.segmentEditor.duration}
           unit="min"
           value={minutes}
           min={1}
@@ -63,7 +70,7 @@ export function SegmentEditor({ segments, index }: { segments: Segment[]; index:
           onChange={(mins) => updateSegmentMeta(segment.id, { times: Math.max(1, Math.round(mins * 60 / segment.dtime)) })}
         />
         <NumberField
-          label="Zeitschritt (dtime)"
+          label={t.segmentEditor.timeStep}
           unit="s"
           value={segment.dtime}
           min={1}
@@ -74,7 +81,7 @@ export function SegmentEditor({ segments, index }: { segments: Segment[]; index:
           <div className="flex items-end gap-2">
             <div className="flex-1">
               <Slider
-                label="Aktivitätsverhältnis (PAR)"
+                label={t.segmentEditor.activityRatio}
                 value={par}
                 min={meta.input_params.PAR.min}
                 max={meta.input_params.PAR.max}
@@ -92,7 +99,7 @@ export function SegmentEditor({ segments, index }: { segments: Segment[]; index:
                 onClick={() => updateSegmentGlobals(segment.id, { PAR: undefined })}
                 className="mb-1.5 shrink-0 rounded border px-2 py-1 text-xs"
                 style={{ borderColor: "var(--gridline)", color: "var(--text-secondary)" }}
-                title="Auf vererbten Wert zurücksetzen"
+                title={t.provenance.resetTooltip}
               >
                 ↺
               </button>
@@ -101,7 +108,7 @@ export function SegmentEditor({ segments, index }: { segments: Segment[]; index:
         </div>
         <div>
           <SelectField
-            label="Körperhaltung"
+            label={t.segmentEditor.posture}
             value={posture}
             options={meta.enums.posture}
             onChange={(value) => updateSegmentGlobals(segment.id, { posture: value as typeof posture })}
@@ -117,7 +124,7 @@ export function SegmentEditor({ segments, index }: { segments: Segment[]; index:
                 onClick={() => updateSegmentGlobals(segment.id, { posture: undefined })}
                 className="rounded border px-1.5 py-0.5 text-xs"
                 style={{ borderColor: "var(--gridline)", color: "var(--text-secondary)" }}
-                title="Auf vererbten Wert zurücksetzen"
+                title={t.provenance.resetTooltip}
               >
                 ↺
               </button>
@@ -131,7 +138,7 @@ export function SegmentEditor({ segments, index }: { segments: Segment[]; index:
           className="cursor-pointer text-sm font-medium"
           style={{ color: "var(--text-secondary)" }}
         >
-          Thermoregulations-Optionen ({activeOptionsCount} aktiv)
+          {t.segmentEditor.optionsSummary(activeOptionsCount)}
         </summary>
         <div className="mt-2 grid grid-cols-2 gap-2">
         {Object.entries(meta.options).map(([key, optMeta]) => {
@@ -158,12 +165,12 @@ export function SegmentEditor({ segments, index }: { segments: Segment[]; index:
                       (() => {
                         const provenance = findLastExplicitOptionSegment(segments, index, key);
                         return provenance !== null
-                          ? `geerbt von Segment ${provenance + 1}`
-                          : "geerbt (Modell-Standard)";
+                          ? t.provenance.inheritedFromIndex(provenance + 1)
+                          : t.provenance.default;
                       })()
                     }
                   >
-                    (geerbt)
+                    {t.provenance.inheritedSuffix}
                   </span>
                 )}
               </label>
@@ -175,7 +182,7 @@ export function SegmentEditor({ segments, index }: { segments: Segment[]; index:
                   }
                   className="rounded border px-1.5 py-0.5 text-xs"
                   style={{ borderColor: "var(--gridline)", color: "var(--text-secondary)" }}
-                  title="Auf vererbten Wert zurücksetzen"
+                  title={t.provenance.resetTooltip}
                 >
                   ↺
                 </button>

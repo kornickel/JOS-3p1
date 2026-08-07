@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { AppShell } from "./components/layout/AppShell";
 import { loadScenario } from "./lib/api";
+import { useT } from "./lib/i18n";
 import { PersonView } from "./pages/PersonView";
 import { ResultsView } from "./pages/ResultsView";
 import { SetupView } from "./pages/SetupView";
@@ -11,6 +12,7 @@ const EXAMPLE_SCENARIO_NAME = "Mountain Hike Example";
 function App() {
   const [ready, setReady] = useState(false);
   const attempted = useRef(false);
+  const t = useT();
   const activeTab = useScenarioStore((s) => s.activeTab);
   const setActiveTab = useScenarioStore((s) => s.setActiveTab);
   const loadSpec = useScenarioStore((s) => s.loadSpec);
@@ -29,7 +31,7 @@ function App() {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-          Lade Beispielszenario…
+          {t.app.loading}
         </p>
       </div>
     );
@@ -37,13 +39,13 @@ function App() {
 
   return (
     <AppShell
-      title="JOS-3 Thermophysiologie-Simulator"
+      title={t.app.title}
       activeTab={activeTab}
       onActiveTabChange={setActiveTab}
       tabs={[
-        { value: "person", label: "Person", content: <PersonView /> },
-        { value: "setup", label: "Setup", content: <SetupView /> },
-        { value: "results", label: "Ausführen & Ergebnisse", content: <ResultsView /> },
+        { value: "person", label: t.app.tabPerson, content: <PersonView /> },
+        { value: "setup", label: t.app.tabSetup, content: <SetupView /> },
+        { value: "results", label: t.app.tabResults, content: <ResultsView /> },
       ]}
     />
   );

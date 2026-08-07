@@ -1,11 +1,12 @@
 import { useEffect } from "react";
+import { useT } from "../../lib/i18n";
 
 export function ConfirmDialog({
   open,
   title,
   description,
-  confirmLabel = "Übernehmen",
-  cancelLabel = "Abbrechen",
+  confirmLabel,
+  cancelLabel,
   onConfirm,
   onCancel,
 }: {
@@ -17,6 +18,7 @@ export function ConfirmDialog({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  const t = useT();
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (e: KeyboardEvent) => {
@@ -55,7 +57,7 @@ export function ConfirmDialog({
             className="rounded border px-3 py-1.5 text-sm"
             style={{ borderColor: "var(--gridline)", color: "var(--text-secondary)" }}
           >
-            {cancelLabel}
+            {cancelLabel ?? t.confirmDialog.cancel}
           </button>
           <button
             type="button"
@@ -63,7 +65,7 @@ export function ConfirmDialog({
             className="rounded px-3 py-1.5 text-sm font-medium"
             style={{ background: "var(--series-1)", color: "white" }}
           >
-            {confirmLabel}
+            {confirmLabel ?? t.confirmDialog.apply}
           </button>
         </div>
       </div>

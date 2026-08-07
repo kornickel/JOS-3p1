@@ -1,12 +1,14 @@
 import { toPng } from "html-to-image";
 import { useEffect, useRef } from "react";
 import { exportCsv, useSimulate } from "../lib/api";
+import { useT } from "../lib/i18n";
 import { useScenarioStore } from "../store/scenarioStore";
 import { BodyDiagramResult } from "../components/body-diagram/BodyDiagramResult";
 import { ResultsCharts } from "../components/results/ResultsCharts";
 import { Card } from "../components/common/Card";
 
 export function ResultsView() {
+  const t = useT();
   const segments = useScenarioStore((s) => s.segments);
   const toSpec = useScenarioStore((s) => s.toSpec);
   const lastResult = useScenarioStore((s) => s.lastResult);
@@ -32,7 +34,7 @@ export function ResultsView() {
     });
     const a = document.createElement("a");
     a.href = dataUrl;
-    a.download = "jos3-ergebnisse.png";
+    a.download = t.results.exportPngFilename;
     a.click();
   };
 
@@ -47,7 +49,7 @@ export function ResultsView() {
             className="rounded px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
             style={{ background: "var(--series-1)" }}
           >
-            {simulate.isPending ? "Simuliere…" : "Simulation ausführen"}
+            {simulate.isPending ? t.results.running : t.results.run}
           </button>
           {lastResult && (
             <>
@@ -57,7 +59,7 @@ export function ResultsView() {
                 className="rounded border px-4 py-2 text-sm"
                 style={{ borderColor: "var(--gridline)", color: "var(--text-secondary)" }}
               >
-                Als CSV exportieren
+                {t.results.exportCsv}
               </button>
               <button
                 type="button"
@@ -65,18 +67,18 @@ export function ResultsView() {
                 className="rounded border px-4 py-2 text-sm"
                 style={{ borderColor: "var(--gridline)", color: "var(--text-secondary)" }}
               >
-                Als PNG exportieren
+                {t.results.exportPng}
               </button>
             </>
           )}
           {segments.length === 0 && (
             <span className="text-sm" style={{ color: "var(--text-muted)" }}>
-              Lege zuerst Segmente im Tab „Szenario-Timeline“ an.
+              {t.results.noSegments}
             </span>
           )}
           {simulate.isError && (
             <span className="text-sm" style={{ color: "var(--status-critical)" }}>
-              Fehler: {(simulate.error as Error).message}
+              {t.results.errorPrefix}{(simulate.error as Error).message}
             </span>
           )}
         </div>
