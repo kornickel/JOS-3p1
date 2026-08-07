@@ -27,8 +27,6 @@ export function SegmentEditor({ segments, index }: { segments: Segment[]; index:
   const { data: meta } = useMeta();
   const updateSegmentMeta = useScenarioStore((s) => s.updateSegmentMeta);
   const updateSegmentGlobals = useScenarioStore((s) => s.updateSegmentGlobals);
-  const selectSegment = useScenarioStore((s) => s.selectSegment);
-  const setActiveTab = useScenarioStore((s) => s.setActiveTab);
   const segment = segments[index];
 
   if (!meta || !segment) return null;
@@ -39,6 +37,7 @@ export function SegmentEditor({ segments, index }: { segments: Segment[]; index:
   const options = computeEffectiveOptions(segments, index, meta.options);
   const parExplicit = isGlobalFieldExplicitAt(segment, "PAR");
   const postureExplicit = isGlobalFieldExplicitAt(segment, "posture");
+  const activeOptionsCount = Object.values(options).filter(Boolean).length;
 
   return (
     <Card title={`Segment bearbeiten: ${segment.label}`}>
@@ -127,10 +126,14 @@ export function SegmentEditor({ segments, index }: { segments: Segment[]; index:
         </div>
       </div>
 
-      <h4 className="mt-5 mb-2 text-sm font-medium" style={{ color: "var(--text-secondary)" }}>
-        Thermoregulations-Optionen
-      </h4>
-      <div className="grid grid-cols-2 gap-2">
+      <details className="mt-5">
+        <summary
+          className="cursor-pointer text-sm font-medium"
+          style={{ color: "var(--text-secondary)" }}
+        >
+          Thermoregulations-Optionen ({activeOptionsCount} aktiv)
+        </summary>
+        <div className="mt-2 grid grid-cols-2 gap-2">
         {Object.entries(meta.options).map(([key, optMeta]) => {
           const checked = Boolean(options[key]);
           const explicit = isOptionExplicitAt(segment, key);
@@ -180,19 +183,8 @@ export function SegmentEditor({ segments, index }: { segments: Segment[]; index:
             </div>
           );
         })}
-      </div>
-
-      <button
-        type="button"
-        onClick={() => {
-          selectSegment(segment.id);
-          setActiveTab("body");
-        }}
-        className="mt-4 text-sm font-medium"
-        style={{ color: "var(--series-1)" }}
-      >
-        Kleidung &amp; Wetter für dieses Segment bearbeiten →
-      </button>
+        </div>
+      </details>
     </Card>
   );
 }

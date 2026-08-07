@@ -86,7 +86,7 @@ export const useScenarioStore = create<ScenarioState>((set, get) => ({
   selectedSegmentId: null,
   selectedRegion: null,
   lastResult: null,
-  activeTab: "timeline",
+  activeTab: "setup",
 
   setModel: (patch) => set((state) => ({ model: { ...state.model, ...patch } })),
 

@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { AppShell } from "./components/layout/AppShell";
-import { BodyDiagramInput } from "./components/body-diagram/BodyDiagramInput";
 import { loadScenario } from "./lib/api";
+import { PersonView } from "./pages/PersonView";
 import { ResultsView } from "./pages/ResultsView";
 import { SetupView } from "./pages/SetupView";
-import { TimelineView } from "./pages/TimelineView";
 import { useScenarioStore } from "./store/scenarioStore";
 
 const EXAMPLE_SCENARIO_NAME = "Mountain Hike Example";
@@ -42,9 +41,8 @@ function App() {
       activeTab={activeTab}
       onActiveTabChange={setActiveTab}
       tabs={[
+        { value: "person", label: "Person", content: <PersonView /> },
         { value: "setup", label: "Setup", content: <SetupView /> },
-        { value: "timeline", label: "Szenario-Timeline", content: <TimelineView /> },
-        { value: "body", label: "Körper & Kleidung", content: <BodyDiagramInput /> },
         { value: "results", label: "Ausführen & Ergebnisse", content: <ResultsView /> },
       ]}
     />
