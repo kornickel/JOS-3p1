@@ -495,10 +495,27 @@ $+45\,\%$ validiert, ohne Naht zwischen Auf- und Abstieg. Der Lastzuschlagsterm 
 ### 4.2 Belastungsbewertung
 
 Aus den Simulationsergebnissen leitet die WebApp direkte Warnindikatoren ab, orientiert an anerkannten
-Grenzwertsystematiken (ISO 7933 Hitzebelastung, ISO 11079-nahe Kälteschutz-Richtwerte für Extremitäten):
+Grenzwertsystematiken (ISO 7933 Hitzebelastung, ISO 11079-nahe Kälteschutz-Richtwerte für Extremitäten,
+sowie arbeits-/sportphysiologische Faustregeln für Dehydration). Alle Grenzwerte sind fest verdrahtet
+(`webapp/frontend/src/lib/thresholds.ts`) und aktuell nicht nutzerkonfigurierbar; es werden zwei Stufen
+unterschieden – **Warnung** und **kritisch**:
 
-- **Kern-/Hauttemperatur:** feste Ober-/Untergrenzen (z. B. $T_{cr}\ge 38{,}0$ °C = Belastungswarnung,
-  $T_{cr}\ge 38{,}5$ °C = kritisch, orientiert an der Dauerarbeitsgrenze für unakklimatisierte Personen).
+| Größe | Norm | Warnung | Kritisch | Quelle / Begründung |
+|---|---|---|---|---|
+| Kerntemperatur $T_{cr,Chest}$ | 36,0–38,0 °C | <36,0 °C bzw. >38,0 °C | <35,0 °C bzw. >38,5 °C | ISO 7933: Dauerarbeitsgrenze 38,0 °C unakklimatisiert / 38,5 °C akklimatisiert; <36,0 °C beginnende, <35,0 °C klinische Hypothermie |
+| Mittlere Hauttemperatur $\bar T_{sk}$ | 31,0–35,5 °C | <31,0 °C bzw. >35,5 °C | <30,0 °C bzw. >37,0 °C | Neutralbereich 33–35 °C (§1.6); ab ~30 °C setzt typischerweise Kältezittern ein |
+| Hautfeuchte $w$ | $w<0{,}5$ | $0{,}5\le w\le0{,}85$ | $w>0{,}85$ | $w>0{,}3$ wird als feucht empfunden, $w_{max}\approx0{,}85$ ist die Verdunstungsgrenze unakklimatisierter Personen (§1.5) |
+| Extremitäten-Hauttemperatur (Hand/Fuß, je Körperteil) | >20 °C | 15–20 °C | <15 °C | ISO 11079: unter 20 °C lässt die Fingerfertigkeit nach, ab 15 °C schmerzhaft, ab 10 °C Taubheitsgefühl |
+| Zittern $\sum_i \dot Q_{shiv,i}$ (Ganzkörper) | 0 W | 0,1–100 W | >100 W | jedes Zittern zeigt beginnenden Kältestress an; anhaltend >100 W erhöht Glykogenverbrauch und Ermüdung spürbar |
+| Dehydration $D(t)$ | <2 % | 2–4 % | >4 % | arbeits-/sportphysiologische Faustregel: ab 2 % Körpermasseverlust messbare Leistungseinbußen, ab 4 % ernstzunehmend |
+| Kleidungssättigung $\sigma(t)$ | <0,7 | 0,7–0,95 | >0,95 | oberhalb ~0,95 liefert der Speicher praktisch keine Verdunstungskühlung mehr (§2.3) |
+
+Zwei Modellentscheidungen dazu: Die Extremitäten-Grenzwerte gelten **je Körperteil** (Hand/Fuß links und
+rechts einzeln geprüft) statt auf den Ganzkörper-Mittelwert – in der Kälte "binden" typischerweise die
+Extremitäten, während $\bar T_{sk}$ noch unauffällig aussieht. Zittern ist bewusst als **nachlaufender**
+Indikator eingeordnet: Es setzt erst ein, wenn die Haut bereits ausgekühlt ist, während die
+Hauttemperatur-Schwellen das führende Signal sind – im Interface werden beide daher gemeinsam angezeigt.
+
 - **Dehydration**, als Prozent der Körpermasse aus dem kumulierten Gewichtsverlust:
   $$
   D(t) = \frac{1}{m_K\cdot 1000}\left(\int_0^t \dot m_{Wle}(t')\,dt' \;-\; S(t)\right)\cdot 100\,\%
@@ -520,7 +537,19 @@ Die Körper-Heatmap färbt jede Region nach dem gewählten Wert. Zwei Rampen kom
 interpoliert, um die "matschigen" Helligkeitseinbrüche klassischer Jet-Farbverläufe zu vermeiden) für
 Größen ohne bedeutungstragenden Nullpunkt (Temperaturen, Sättigung), und eine **divergierende**
 Blau-Rot-Rampe für Größen mit bedeutungstragendem Nullpunkt (Hautfeuchte-Abweichung, Zhang-Empfindung/
--Komfort) – hier codiert die Farbe Abweichung *und* Richtung vom neutralen Mittelpunkt.
+-Komfort) – hier codiert die Farbe Abweichung *und* Richtung vom neutralen Mittelpunkt. Beide Rampen
+skalieren relativ zum Wertebereich der jeweils angezeigten Zeitschritte, nicht zu den festen Grenzwerten
+aus §4.2 – die Heatmap beantwortet "wo im Körper ist es warm/kalt", nicht "ist das schon kritisch".
+
+Die Grenzwerte aus §4.2 erscheinen stattdessen an zwei Stellen: als halbtransparente Gelb-/Rot-Bänder
+hinter den betroffenen Zeitreihen-Diagrammen (Kerntemperatur, mittlere Hauttemperatur, Hautfeuchte,
+Kleidungssättigung, Dehydration – jeweils von der Warnungs- bzw. Kritisch-Grenze bis zum Achsenrand
+schraffiert) und als Textliste jeder im Simulationslauf überschrittenen Grenze, inklusive Zeitpunkt und
+zugehörigem Zeitplan-Abschnitt. Die beiden Extremitäten- und Zittern-Grenzwerte fließen nur in die
+Textliste ein, da sie je Körperteil bzw. summiert über alle Segmente ausgewertet werden und sich nicht
+sinnvoll einem einzelnen Zeitreihen-Diagramm zuordnen lassen. Das Zhang-Komfortpanel (§3) erhält bewusst
+**keine** Bänder: Empfindung/Komfort sind ein Kontinuum ohne physiologische Gefahrengrenze, anders als die
+strain-Größen dieses Abschnitts.
 
 ---
 
@@ -550,6 +579,7 @@ Blau-Rot-Rampe für Größen mit bedeutungstragendem Nullpunkt (Hautfeuchte-Abwe
 | $C_w(i)$ | Minetti-Gehkosten bei Steigung $i$ | J/(kg·m) |
 | $\dot W$ | metabolische Gesamtleistung (Gehen) | W |
 | $D(t)$, $\sigma(t)$ | Dehydrationsgrad, Kleidungssättigung | %, – |
+| $\dot Q_{shiv,i}$ | Zitterwärme Segment $i$ (§1.1, §4.2) | W |
 
 ---
 
@@ -574,3 +604,5 @@ Blau-Rot-Rampe für Größen mit bedeutungstragendem Nullpunkt (Hautfeuchte-Abwe
   heat stress using calculation of the predicted heat strain.*
 - ISO 9920:2007. *Ergonomics of the thermal environment — Estimation of thermal insulation and water
   vapour resistance of a clothing ensemble.*
+- ISO 11079:2007. *Ergonomics of the thermal environment — Determination and interpretation of cold stress
+  when using required clothing insulation (IREQ) and local cooling effects.*
